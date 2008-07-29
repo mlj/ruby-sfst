@@ -1,0 +1,25 @@
+= ruby-sfst
+
+A wrapper for the Stuttgart Finite State Transducer Tools (SFST).
+
+== Installation
+
+  gem install mlj-ruby-sfst --source=http://gems.github.com
+
+== License
+
+As it includes the SFST code directly, the wrapper inherits the GPL2 
+license of the SFST project.
+
+== Usage
+
+See http://www.ims.uni-stuttgart.de/projekte/gramotron/SOFTWARE/SFST.html
+for details on how to write SFST transducers.
+
+Currently, <tt>ruby-sfst</tt> only supports simple compilation, analysis
+and generation using regular and compact transducers. It also only 
+supports UTF-8.
+
+== Development
+
+The project is hosted on github on http://github.com/mlj/ruby-sfst.
