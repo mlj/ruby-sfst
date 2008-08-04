@@ -4,7 +4,7 @@ A wrapper for the Stuttgart Finite State Transducer Tools (SFST).
 
 == Installation
 
-  gem install mlj-ruby-sfst --source=http://gems.github.com
+  gem install ruby-sfst
 
 == License
 

@@ -4,13 +4,14 @@ require 'rake'
 begin
   require 'echoe'
  
-  Echoe.new('ruby-sfst', '0.0.1') do |p|
+  Echoe.new('ruby-sfst', '0.1.0') do |p|
     p.summary = "A wrapper for the Stuttgart Finite State Transducer Tools (SFST)."
     p.author = 'Marius L. Jøhndal'
     p.email = "mariuslj (at) ifi [dot] uio (dot) no"
     p.url = "http://github.com/mlj/ruby-sfst"
     p.ignore_pattern = ["*.gemspec"]
     p.rdoc_pattern = ["README.rdoc", "lib/*.rb"]
+    p.rubyforge_name = "sfst"
   end
  
 rescue LoadError => boom
