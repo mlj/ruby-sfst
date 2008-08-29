@@ -117,3 +117,16 @@ class CompactTransducerTestCase < Test::Unit::TestCase
     assert_equal [], fst.analyse('fox').sort
   end
 end
+
+class StressTestCase < Test::Unit::TestCase
+  def setup
+    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_REGULAR_FILE, :compact => false)
+  end
+
+  def test_repeated_analyses
+    fst = SFST::RegularTransducer.new(TEST_COMPILED_REGULAR_FILE)
+    65535.times do
+      assert_equal ['bar', 'baz'], fst.analyse('foo').sort
+    end
+  end
+end
