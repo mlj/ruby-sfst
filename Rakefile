@@ -4,7 +4,7 @@ require 'rake'
 begin
   require 'echoe'
  
-  Echoe.new('ruby-sfst', '0.1.0') do |p|
+  Echoe.new('ruby-sfst', '0.1.1') do |p|
     p.summary = "A wrapper for the Stuttgart Finite State Transducer Tools (SFST)."
     p.author = 'Marius L. Jøhndal'
     p.email = "mariuslj (at) ifi [dot] uio (dot) no"
