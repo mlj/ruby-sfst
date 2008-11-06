@@ -352,7 +352,6 @@ static bool _regular_transducer_yield(Transducer *t, Node *node, VALUE result_ar
 
 static VALUE _regular_transducer_analyze_or_generate(Transducer *t, VALUE string, bool generate)
 {
-  t->vmark = 0;
   Transducer *a2, *a3;
   Transducer a1(RSTRING(string)->ptr, &(t->alphabet), false);
   if (generate) {

@@ -25,7 +25,7 @@
 
 #include "mem.h"
 
-typedef unsigned short VType;
+typedef unsigned long VType;
 
 extern int Quiet;
 

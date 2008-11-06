@@ -121,11 +121,19 @@ end
 class StressTestCase < Test::Unit::TestCase
   def setup
     SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_REGULAR_FILE, :compact => false)
+    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_COMPACT_FILE, :compact => true)
   end
 
-  def test_repeated_analyses
+  def test_repeated_analyses_regular
     fst = SFST::RegularTransducer.new(TEST_COMPILED_REGULAR_FILE)
-    65535.times do
+    65536.times do
+      assert_equal ['bar', 'baz'], fst.analyse('foo').sort
+    end
+  end
+
+  def test_repeated_analyses_compact
+    fst = SFST::CompactTransducer.new(TEST_COMPILED_COMPACT_FILE)
+    65536.times do
       assert_equal ['bar', 'baz'], fst.analyse('foo').sort
     end
   end
