@@ -83,7 +83,7 @@ Transducer *repetition2( Transducer *a );
 Transducer *optional( Transducer *a );
 Transducer *make_rule( Transducer *lc, Range *r1, Twol_Type type,
 		      Range *r2, Transducer *rc );
-Transducer *freely_insert( Transducer *a, Character c, Character c );
+Transducer *freely_insert( Transducer *a, Character lc, Character uc );
 Transducer *make_mapping( Ranges*, Ranges* );
 Ranges *add_range( Range*, Ranges* );
 Contexts *make_context( Transducer *l, Transducer *r );
