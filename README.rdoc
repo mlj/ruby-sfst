@@ -2,6 +2,8 @@
 
 A wrapper for the Stuttgart Finite State Transducer Tools (SFST).
 
+The wrapper is based on SFST 1.3.
+
 == Installation
 
   gem install ruby-sfst

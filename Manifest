@@ -11,6 +11,7 @@ ext/sfst_machine/utf8-scanner.ll
 ext/sfst_machine/determinise.C
 ext/sfst_machine/interface.C
 ext/sfst_machine/compact.h
+ext/sfst_machine/sgi.h
 ext/sfst_machine/basic.h
 ext/sfst_machine/fst.h
 ext/sfst_machine/make-compact.h
