@@ -252,7 +252,6 @@ class Transducer {
  private:
   bool deterministic;
   bool minimised;
-  VType vmark;
   Node root;
   Mem mem;
 
@@ -295,6 +294,7 @@ class Transducer {
   void read_transducer_text( FILE* );
 
  public:
+  VType vmark;
   Alphabet alphabet; // The set of all labels, i.e. character pairs
 
   Transducer( void ) : root(), mem()

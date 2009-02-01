@@ -366,7 +366,6 @@ static VALUE _regular_transducer_analyze_or_generate(Transducer *t, VALUE string
   delete a3;
 
   a2->alphabet.copy(t->alphabet);
-  t->incr_vmark();
   bool accepted = _regular_transducer_yield(a2, a2->root_node(), rb_ary_new());
   delete a2;
 

@@ -38,7 +38,7 @@ typedef hash_map<char*, Transducer*, hash<const char*>, eqstr> VarMap;
 
 typedef hash_map<char*, Range*, hash<const char*>, eqstr> SVarMap;
 
-bool Verbose=true;
+bool Verbose=false;
 
 Alphabet TheAlphabet;
 
