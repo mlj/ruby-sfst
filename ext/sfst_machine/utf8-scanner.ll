@@ -76,42 +76,38 @@ FN	[A-Za-z0-9._/\-*+]
 <incl>\"{FN}+\"    { /* got the include file name */
                      FILE *file;
                      char *name=unquote(yytext);
-                     if ( Include_Stack_Ptr >= MAX_INCLUDE_DEPTH )
-		       {
-			 fprintf( stderr, "Includes nested too deeply" );
-			 exit( 1 );
-		       }
+                     if ( Include_Stack_Ptr >= MAX_INCLUDE_DEPTH ) {
+		       fprintf( stderr, "Includes nested too deeply" );
+		       exit( 1 );
+		     }
 		     if (Verbose) fputc('\n', stderr);
 		     file = fopen( name, "rt" );
 		     if (!file)
-                       error2("Can't open include file",name);
-                     else
-                       {
-                         Name_Stack[Include_Stack_Ptr] = FileName;
-                         FileName = name;
-                         Lineno_Stack[Include_Stack_Ptr] = yylineno;
-			 yylineno = 1;
-		         Include_Stack[Include_Stack_Ptr++]=YY_CURRENT_BUFFER;
-		         yy_switch_to_buffer(
-                              yy_create_buffer(yyin, YY_BUF_SIZE));
-                         yyin = file;
-			 print_lineno();
-		         BEGIN(INITIAL);
-                       }
+                       error2("Can't open include file", name);
+                     else {
+                       Name_Stack[Include_Stack_Ptr] = FileName;
+                       FileName = name;
+                       Lineno_Stack[Include_Stack_Ptr] = yylineno;
+		       yylineno = 1;
+		       Include_Stack[Include_Stack_Ptr++]=YY_CURRENT_BUFFER;
+		       yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
+                       yyin = file;
+		       print_lineno();
+		       BEGIN(INITIAL);
+                     }
                   }
 <<EOF>>           {
                      if (Verbose)
 		       fputc('\n', stderr);
                      if ( --Include_Stack_Ptr < 0 )
 		       yyterminate();
-		     else
-		       {
-                         free(FileName);
-                         FileName = Name_Stack[Include_Stack_Ptr];
-                         yylineno = Lineno_Stack[Include_Stack_Ptr];
-			 yy_delete_buffer( YY_CURRENT_BUFFER );
-			 yy_switch_to_buffer(Include_Stack[Include_Stack_Ptr]);
-                       }
+		     else {
+                       free(FileName);
+                       FileName = Name_Stack[Include_Stack_Ptr];
+                       yylineno = Lineno_Stack[Include_Stack_Ptr];
+		       yy_delete_buffer( YY_CURRENT_BUFFER );
+		       yy_switch_to_buffer(Include_Stack[Include_Stack_Ptr]);
+                     }
                   }
 
 
@@ -135,7 +131,7 @@ FN	[A-Za-z0-9._/\-*+]
 ">>"              { return PRINT; }
 "<<"              { return INSERT; }
 "__"              { return POS; }
-"^_"              { return REV; }
+"^_"              { return SWITCH; }
 
 [.,{}\[\]()&!?|*+:=_\^\-] { return yytext[0]; }
 

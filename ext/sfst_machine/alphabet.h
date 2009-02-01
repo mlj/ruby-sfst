@@ -13,7 +13,6 @@
 #define _ALPHABET_H_
 
 #include <stdio.h>
-#include <string.h>
 
 #include "basic.h"
 
@@ -21,6 +20,10 @@
 #include <vector>
 
 #include <iostream>
+
+#include <cstring>
+
+#include "sgi.h"
 
 #ifndef CODE_DATA_TYPE
 typedef unsigned short Character;  // data type of the symbol codes
@@ -31,18 +34,6 @@ typedef unsigned CODE_DATA_TYPE Character;
 // data type used to indicate whether some action is to be performed
 // on the analysis level (lower) or the surface level (upper)
 typedef enum {upper, lower} Level;
-
-#ifdef SGIext
-
-#include <ext/hash_set>
-#include <ext/hash_map>
-
-#else
-
-#include <hash_set>
-#include <hash_map>
-
-#endif
 
 extern char EpsilonString[]; // holds the symbol representing the empty string
                              // which is usually "<>"
@@ -157,10 +148,10 @@ class Alphabet {
   typedef std::set<Label, Label::label_cmp> LabelSet;
 
   // hash table used to map the symbols to their codes
-  typedef __gnu_cxx::hash_map<const char*, Character, __gnu_cxx::hash<const char*>,eqstr> SymbolMap;
+  typedef hash_map<const char*, Character, hash<const char*>,eqstr> SymbolMap;
 
   // hash table used to map the codes back to the symbols
-  typedef __gnu_cxx::hash_map<Character, char*> CharMap;
+  typedef hash_map<Character, char*> CharMap;
 
  private:
   SymbolMap sm; // maps symbols to codes
@@ -249,17 +240,17 @@ class Alphabet {
   const char *write_label( Label l, bool with_brackets=true ) const;
 
   // scan the next multi-character symbol in the argument string
-  int next_mcsym( char*&, int extended=1 );
+  int next_mcsym( char*&, bool insert=true );
 
   // scan the next symbol in the argument string
-  int next_code( char*&, int extended=1 );
+  int next_code( char*&, bool extended=true, bool insert=true );
 
   // convert a character string into a symbol or label sequence
   void string2symseq( char*, std::vector<Character>& );
   void string2labelseq( char*, std::vector<Label>& );
 
   // scan the next label in the argument string
-  Label next_label( char*&, int extended=1 );
+  Label next_label( char*&, bool extended=true );
 
   // store the alphabet in the argument file (in binary form)
   void store( FILE* ) const;
@@ -276,7 +267,7 @@ class Alphabet {
 };
 
 // write the alphabet to the output stream (in readable form)
-std::ostream &operator<<(std::ostream&, Alphabet&);
+std::ostream &operator<<(std::ostream&, const Alphabet&);
 
 
 #endif

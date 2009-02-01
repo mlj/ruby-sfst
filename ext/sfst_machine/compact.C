@@ -383,7 +383,7 @@ void CompactTransducer::longest_match2(unsigned int n, char *string, int l,
 
   // follow the non-epsilon transitions
   char *end=string;
-  int c=alphabet.next_code(end, false);
+  int c=alphabet.next_code(end, false, false);
   l += end-string;
   if (c != EOF) {
     // find the set of arcs with matching upper character in the sort list
@@ -430,7 +430,7 @@ const char *CompactTransducer::longest_match( char* &string )
 
   // no match? return the next character
   if (ba.size() == 0) {
-    int c=alphabet.next_code(string, false);
+    int c=alphabet.next_code(string, false, false);
     return alphabet.code2symbol(c);
   }
 

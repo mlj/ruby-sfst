@@ -43,7 +43,7 @@ Transducer *Result;
   Contexts   *contexts;
 }
 
-%token <number> NEWLINE ALPHA COMPOSE PRINT POS INSERT REV
+%token <number> NEWLINE ALPHA COMPOSE PRINT POS INSERT SWITCH
 %token <type>   ARROW
 %token <rtype>  REPLACE
 %token <name>   SYMBOL VAR SVAR RVAR RSVAR
@@ -111,7 +111,7 @@ RE:         RE ARROW CONTEXTS2      { $$ = restriction($1,$2,$3,0); }
           | RE '?'           { $$ = optional($1); }
           | RE RE %prec SEQ  { $$ = catenate($1, $2); }
           | '!' RE           { $$ = negation($2); }
-          | REV RE           { $$ = switch_levels($2); }
+          | SWITCH RE        { $$ = switch_levels($2); }
           | '^' RE           { $$ = upper_level($2); }
           | '_' RE           { $$ = lower_level($2); }
           | RE '&' RE        { $$ = conjunction($1, $3); }
@@ -162,7 +162,7 @@ VALUE:      LCHAR '-' LCHAR	   { $$=add_values($1,$3,NULL); }
           ;
 
 LCHAR:      CHARACTER	{ $$=$1; }
-          | UTF8CHAR	{ $$=utf8toint($1); }
+          | UTF8CHAR	{ $$=utf8toint($1); free($1); }
 	  | SCHAR       { $$=$1; }
           ;
 
@@ -197,6 +197,8 @@ NEWLINES:   NEWLINE NEWLINES     {}
 %%
 
 extern FILE  *yyin;
+static int Compact=0;
+static int LowMem=0;
 
 /*******************************************************************/
 /*                                                                 */
@@ -210,4 +212,125 @@ void yyerror(char *text)
   cerr << "\n" << FileName << ":" << yylineno << ": " << text << " at: ";
   cerr << yytext << "\naborted.\n";
   exit(1);
+}
+
+
+/*******************************************************************/
+/*                                                                 */
+/*  warn                                                           */
+/*                                                                 */
+/*******************************************************************/
+
+void warn(char *text)
+
+{
+  cerr << "\n" << FileName << ":" << yylineno << ": warning: " << text << "!\n";
+}
+
+
+/*******************************************************************/
+/*                                                                 */
+/*  warn2                                                          */
+/*                                                                 */
+/*******************************************************************/
+
+void warn2(char *text, char *text2)
+
+{
+  cerr << "\n" << FileName << ":" << yylineno << ": warning: " << text << ": ";
+  cerr << text2 << "\n";
+}
+
+
+/*******************************************************************/
+/*                                                                 */
+/*  get_flags                                                      */
+/*                                                                 */
+/*******************************************************************/
+
+void get_flags( int *argc, char **argv )
+
+{
+  for( int i=1; i<*argc; i++ ) {
+    if (strcmp(argv[i],"-c") == 0) {
+      Compact = 1;
+      argv[i] = NULL;
+    }
+    else if (strcmp(argv[i],"-l") == 0) {
+      LowMem = 1;
+      argv[i] = NULL;
+    }
+    else if (strcmp(argv[i],"-q") == 0) {
+      Verbose = 0;
+      argv[i] = NULL;
+    }
+    else if (strcmp(argv[i],"-s") == 0) {
+      Switch = 1;
+      argv[i] = NULL;
+    }
+  }
+  // remove flags from the argument list
+  int k;
+  for( int i=k=1; i<*argc; i++)
+    if (argv[i] != NULL)
+      argv[k++] = argv[i];
+  *argc = k;
+}
+
+
+/*******************************************************************/
+/*                                                                 */
+/*  main                                                           */
+/*                                                                 */
+/*******************************************************************/
+
+int main( int argc, char *argv[] )
+
+{
+  FILE *file;
+
+  get_flags(&argc, argv);
+  if (argc < 3) {
+    fprintf(stderr,"\nUsage: %s [options] infile outfile\n", argv[0]);
+    fprintf(stderr,"\nOPTIONS:\n");
+    fprintf(stderr,"-c\tStore the transducer in fst-infl2 format.\n");
+    fprintf(stderr,"-l\tStore the transducer in fst-infl3 format.\n");
+    fprintf(stderr,"-s\tSwitch the upper and lower levels producing a transducer for generation rather than recognition.\n");
+    fprintf(stderr,"-q\tquiet mode\n\n");
+    exit(1);
+  }
+  if ((file = fopen(argv[1],"rt")) == NULL) {
+    fprintf(stderr,"\nError: Cannot open grammar file \"%s\"\n\n", argv[1]);
+    exit(1);
+  }
+  FileName = argv[1];
+  Result = NULL;
+  TheAlphabet.utf8 = UTF8;
+  yyin = file;
+  try {
+    yyparse();
+    Result->alphabet.utf8 = UTF8;
+    if (Verbose)
+      cerr << "\n";
+    if (Result->is_empty()) 
+      warn("resulting transducer is empty"); 
+    if ((file = fopen(argv[2],"wb")) == NULL) {
+	fprintf(stderr,"\nError: Cannot open output file %s\n\n", argv[2]);
+	exit(1);
+    }
+    if (Compact) {
+      MakeCompactTransducer ca(*Result);
+      delete Result;
+      ca.store(file);
+    }
+    else if (LowMem)
+      Result->store_lowmem(file);
+    else
+      Result->store(file);
+    fclose(file);
+  }
+  catch(const char* p) {
+      cerr << "\n" << p << "\n\n";
+      exit(1);
+  }
 }

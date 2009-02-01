@@ -45,7 +45,7 @@
      PRINT = 261,
      POS = 262,
      INSERT = 263,
-     REV = 264,
+     SWITCH = 264,
      ARROW = 265,
      REPLACE = 266,
      SYMBOL = 267,
@@ -67,7 +67,7 @@
 #define PRINT 261
 #define POS 262
 #define INSERT 263
-#define REV 264
+#define SWITCH 264
 #define ARROW 265
 #define REPLACE 266
 #define SYMBOL 267

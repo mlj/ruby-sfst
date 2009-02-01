@@ -14,7 +14,6 @@
 using std::vector;
 using std::pair;
 using std::set;
-using __gnu_cxx::hash_map;
 
 /*****************  class NodeSet  *********************************/
 

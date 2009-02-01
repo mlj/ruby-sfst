@@ -126,6 +126,27 @@ void Node::init()
 
 /*******************************************************************/
 /*                                                                 */
+/*  Node::clear_visited                                            */
+/*                                                                 */
+/*******************************************************************/
+
+void Node::clear_visited( NodeHashSet &nodeset )
+
+{
+  if (nodeset.find( this ) == nodeset.end()) {
+    visited = 0;
+    nodeset.insert( this );
+    fprintf(stderr," %lu", nodeset.size());
+    for( ArcsIter p(arcs()); p; p++ ) {
+      Arc *arc=p;
+      arc->target_node()->clear_visited( nodeset );
+    }
+  }
+}
+
+
+/*******************************************************************/
+/*                                                                 */
 /*  NodeNumbering::number_node                                     */
 /*                                                                 */
 /*******************************************************************/
@@ -196,14 +217,16 @@ Arc *Transducer::new_arc( Label l, Node *target )
 /*                                                                 */
 /*******************************************************************/
 
-void Transducer::add_string( char *s, bool extended )
+void Transducer::add_string( char *s, bool extended, Alphabet *a )
 
 {
+  if (a == NULL)
+    a = &alphabet;
+
   Node *node=root_node();
-  
   Label l;
-  while (!(l = alphabet.next_label(s, extended)).is_epsilon()) {
-    alphabet.insert(l);
+  while (!(l = a->next_label(s, extended)).is_epsilon()) {
+    a->insert(l);
     Arcs *arcs=node->arcs();
     node = arcs->target_node( l );
     if (node == NULL) {
@@ -271,7 +294,7 @@ Transducer::Transducer( istream &is, const Alphabet *a, bool verbose  )
 	break;
     buffer[l+1] = 0;
 
-    add_string(buffer,extended);
+    add_string(buffer, extended);
   }
   if (verbose && n >= 10000)
     cerr << "\n";
@@ -515,7 +538,13 @@ int Transducer::print_strings( FILE *file, bool with_brackets )
 bool Transducer::analyze_string( char *string, FILE *file, bool with_brackets )
 
 {
-  Transducer a1(string, &alphabet, false);
+  vector<Character> input;
+  alphabet.string2symseq( string, input );
+  vector<Label> labels;
+  for( size_t i=0; i<input.size(); i++ )
+    labels.push_back(Label(input[i]));
+
+  Transducer a1(labels);
   Transducer *a2=&(*this || a1);
   Transducer *a3=&(a2->lower_level());
   delete a2;
@@ -598,14 +627,15 @@ static void print_node( ostream &s, Node *node, NodeNumbering &index,
 {
   if (!node->was_visited( vmark )) {
     Arcs *arcs=node->arcs();
-    if (node->is_final())
-      s << "final\t" << index[node] << "\n";
     for( ArcsIter p(arcs); p; p++ ) {
       Arc *arc=p;
-      s << index[node] << "\t";
-      s << abc.write_label(arc->label()) << "\t";
-      s << index[arc->target_node()] << "\n";
+      s << index[node] << "\t" << index[arc->target_node()];
+      s << "\t" << abc.write_char(arc->label().lower_char());
+      s << "\t" << abc.write_char(arc->label().upper_char());
+      s << "\n";
     }
+    if (node->is_final())
+      s << index[node] << "\n";
     for( ArcsIter p(arcs); p; p++ ) {
       Arc *arc=p;
       print_node( s, arc->target_node(), index, vmark, abc );
@@ -928,18 +958,22 @@ void Transducer::read_transducer_text( FILE *file )
   for( size_t line=0; fgets(buffer, 10000, file ); line++ ) {
     char *p = buffer;
     char *s = next_string(p, line);
-    if (strcmp(s, "final") == 0) {
-      s = next_string(p, line);
-      create_node( nodes, s, line )->set_final(true);
-    }
+    Node *node = create_node( nodes, s, line );
+    if (p == NULL)
+      node->set_final(true);
     else {
-      Node *node = create_node( nodes, s, line );
-      s = next_string(p, line);
-      Label l = alphabet.next_label( s, 2 );
-      if (*s != 0 || l == Label::epsilon)
-	error_message( line );
       s = next_string(p, line);
       Node *target = create_node( nodes, s, line );
+
+      s = next_string(p, line);
+      Character lc = alphabet.add_symbol(s);
+      s = next_string(p, line);
+      Character uc = alphabet.add_symbol(s);
+      Label l(lc,uc);
+      if (l == Label::epsilon)
+	error_message( line );
+
+      alphabet.insert(l);
       node->add_arc( l, target, this );
     }
   }

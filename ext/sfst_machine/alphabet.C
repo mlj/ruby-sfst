@@ -10,14 +10,14 @@
 /*                                                                 */
 /*******************************************************************/
 
-#include <limits.h>
+#include <climits>
+#include <cstring>
+
 #include "utf8.h"
 #include "alphabet.h"
 
 using std::vector;
 using std::ostream;
-using __gnu_cxx::hash_map;
-using __gnu_cxx::hash_set;
 
 const int BUFFER_SIZE=100000;
 
@@ -425,13 +425,13 @@ ostream &operator<<( ostream &s, const Alphabet &a )
 /*  Alphabet::next_mcsym                                           */
 /*                                                                 */
 /*  recognizes multi-character symbols which are enclosed with     */
-/*  angle brackets <...>. If the value of the argument flag is     */
-/*  smaller than 2, the multi-character symbol must be already in  */
-/*  the lexicon in order to be recognized.                         */
+/*  angle brackets <...>. If the argument flag insert is true,     */
+/*  the multi-character symbol must be already in the lexicon in   */
+/*  order to be recognized.                                        */
 /*                                                                 */
 /*******************************************************************/
 
-int Alphabet::next_mcsym( char* &string, int extended )
+int Alphabet::next_mcsym( char* &string, bool insert )
 
 {
   char *start=string;
@@ -446,7 +446,7 @@ int Alphabet::next_mcsym( char* &string, int extended )
 	*end = 0;
 
 	int c;
-	if (extended <= 2)
+	if (insert)
 	  c = add_symbol( start );
 	else
 	  c = symbol2code(start);
@@ -473,13 +473,13 @@ int Alphabet::next_mcsym( char* &string, int extended )
 /*                                                                 */
 /*******************************************************************/
 
-int Alphabet::next_code( char* &string, int extended )
+int Alphabet::next_code( char* &string, bool extended, bool insert )
 
 {
   if (*string == 0)
     return EOF; // finished
 
-  int c = next_mcsym(string, extended);
+  int c = next_mcsym(string, insert);
   if (c != EOF)
     return c;
 
@@ -506,7 +506,7 @@ int Alphabet::next_code( char* &string, int extended )
 /*                                                                 */
 /*******************************************************************/
 
-Label Alphabet::next_label( char* &string, int extended )
+Label Alphabet::next_label( char* &string, bool extended )
 
 {
   // read first character
@@ -517,7 +517,7 @@ Label Alphabet::next_label( char* &string, int extended )
   Character lc=(Character)c;
   if (!extended || *string != ':') { // single character?
     if (lc == Label::epsilon)
-      return next_label(string); // ignore epsilon
+      return next_label(string, extended); // ignore epsilon
     return Label(lc);
   }
 
@@ -532,7 +532,7 @@ Label Alphabet::next_label( char* &string, int extended )
 
   Label l(lc, (Character)c);
   if (l.is_epsilon())
-    return next_label(string); // ignore epsilon transitions
+    return next_label(string, extended); // ignore epsilon transitions
   return l;
 }
 
@@ -782,8 +782,12 @@ char *Alphabet::print_analysis( Analysis &ana, bool both_layers )
     const char *s;
 
     // either print the analysis symbol or the whole label
-    if (both_layers)
+    if (both_layers) {
       s = write_label(l);
+      // quote colons
+      if (strcmp(s,":") == 0)
+	ch.push_back('\\');
+    }
     else if (l.lower_char() != Label::epsilon)
       s = write_char(l.lower_char());
     else

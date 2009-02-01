@@ -25,7 +25,7 @@
 
 #include "mem.h"
 
-typedef unsigned long VType;
+typedef unsigned short VType;
 
 extern int Quiet;
 
@@ -41,8 +41,7 @@ struct hashf {
 struct equalf {
   int operator()(const Node *n1, const Node *n2) const { return n1==n2; }
 };
-typedef __gnu_cxx::hash_set<Node*, hashf, equalf> NodeHashSet;
-
+typedef hash_set<Node*, hashf, equalf> NodeHashSet;
 
 
 /*****************  class Arc  *************************************/
@@ -154,6 +153,7 @@ class Node {
   Arcs *arcs( void ) { return &arcsp; };
   const Arcs *arcs( void ) const { return &arcsp; };
   Node *forward( void ) { return forwardp; };
+  void clear_visited( NodeHashSet &nodeset );
   bool was_visited( VType vmark ) {
     if (visited == vmark)
       return true;
@@ -179,7 +179,7 @@ class Node2Int {
       return (n1 == n2);
     }
   };
-  typedef __gnu_cxx::hash_map<Node*, int, hashf, equalf> NL;
+  typedef hash_map<Node*, int, hashf, equalf> NL;
 
  private:
   int current_number;
@@ -231,7 +231,7 @@ class PairMapping {
       return (p1.first==p2.first && p1.second == p2.second);
     }
   };
-  typedef __gnu_cxx::hash_map<NodePair, Node*, hashf, equalf> PairMap;
+  typedef hash_map<NodePair, Node*, hashf, equalf> PairMap;
   PairMap pm;
   
  public:
@@ -252,12 +252,21 @@ class Transducer {
  private:
   bool deterministic;
   bool minimised;
+  VType vmark;
   Node root;
   Mem mem;
 
   typedef std::set<Label, Label::label_cmp> LabelSet;
-  typedef __gnu_cxx::hash_map<Character, char*> SymbolMap;
+  typedef hash_map<Character, char*> SymbolMap;
 
+  void incr_vmark( void ) {
+    if (++vmark == 0) {
+      NodeHashSet nodes;
+      root.clear_visited( nodes );
+      fprintf(stderr,"clearing flags\n");
+      vmark = 1;
+    }
+  };
   void reverse_node( Node *old_node, Transducer *new_node );
   Label recode_label( Label, bool lswitch, bool recode, Alphabet& );
   Node *copy_nodes( Node *n, Transducer *a, 
@@ -286,11 +295,6 @@ class Transducer {
   void read_transducer_text( FILE* );
 
  public:
-  VType vmark;
-  void incr_vmark( void ) {
-    if (++vmark == 0)
-      throw "Overflow of generation counter!";
-  };
   Alphabet alphabet; // The set of all labels, i.e. character pairs
 
   Transducer( void ) : root(), mem()
@@ -308,7 +312,7 @@ class Transducer {
   const Node *root_node( void ) const { return &root; };  // returns the root node
   Node *new_node( void );                // memory alocation for a new node
   Arc *new_arc( Label l, Node *target ); // memory alocation for a new arc
-  void add_string( char *s, bool extended=false );
+  void add_string( char *s, bool extended=false, Alphabet *a=NULL );
   void complete_alphabet( void );
   void minimise_alphabet( void );
   void prune( void );  // remove unnecessary arcs

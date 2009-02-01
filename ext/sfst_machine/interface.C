@@ -16,8 +16,8 @@ using std::ofstream;
 #include <set>
 using std::set;
 
-using __gnu_cxx::hash_map;
-using __gnu_cxx::hash;
+#include "sgi.h"
+
 using std::cerr;
 using std::cout;
 using std::vector;
@@ -38,7 +38,7 @@ typedef hash_map<char*, Transducer*, hash<const char*>, eqstr> VarMap;
 
 typedef hash_map<char*, Range*, hash<const char*>, eqstr> SVarMap;
 
-bool Verbose=false;
+bool Verbose=true;
 
 Alphabet TheAlphabet;
 
@@ -199,10 +199,9 @@ static bool in_range( unsigned int c, Range *r )
 static void free_values( Range *r )
 
 {
-  while (r) {
-    Range *tmp=r;
-    r = r->next;
-    delete tmp;
+  if (r) {
+    free_values(r->next);
+    delete r;
   }
 }
 
@@ -216,11 +215,9 @@ static void free_values( Range *r )
 static void free_values( Ranges *r )
 
 {
-  while (r) {
-    Ranges *tmp=r;
-    r = r->next;
-    free_values(tmp->range);
-    delete tmp;
+  if (r) {
+    free_values(r->next);
+    delete r;
   }
 }
 
@@ -234,10 +231,9 @@ static void free_values( Ranges *r )
 static void free_contexts( Contexts *c )
 
 {
-  while (c) {
-    Contexts *tmp=c;
-    c = c->next;
-    delete tmp;
+  if (c) {
+    free_contexts(c->next);
+    delete c; 
   }
 }
 
@@ -269,6 +265,8 @@ Range *complement_range( Range *r )
   vector<Character> sym;
   for( Range *p=r; p; p=p->next)
     sym.push_back( p->character );
+  free_values( r );
+
   TheAlphabet.complement(sym);
   if (sym.size() == 0)
     error("Empty character range!");
@@ -393,9 +391,10 @@ Transducer *read_words( char *filename )
   ifstream is(filename);
   if (!is.is_open()) {
     static char message[1000];
-    sprintf(message,"Error: Cannot open file \"%s\"!",filename);
+    sprintf(message,"Error: Cannot open file \"%s\"!", filename);
     throw message;
   }
+  free( filename );
   Transducer *t = new Transducer(is, &TheAlphabet, Verbose);
   is.close();
   TheAlphabet.insert_symbols(t->alphabet);
@@ -430,6 +429,7 @@ Transducer *read_transducer( char *filename )
 	    filename);
     throw message;
   }
+  free( filename );
   Transducer *nt = &t.copy(false, &TheAlphabet);
   TheAlphabet.insert_symbols(nt->alphabet);
   if (Verbose)
@@ -1405,8 +1405,8 @@ Transducer *restriction( Transducer *t, Twol_Type type, Contexts *c,
 /*                                                                 */
 /*******************************************************************/
 
-Transducer *constrain_boundary_transducer( Character leftm, Character rightm )
-
+static Transducer *constrain_boundary_transducer( Character leftm, 
+						  Character rightm )
 {
   // create the transducer  (.|<L>|<R>)*
 
@@ -1436,17 +1436,17 @@ Transducer *constrain_boundary_transducer( Character leftm, Character rightm )
 
 /*******************************************************************/
 /*                                                                 */
-/*  extended_context                                               */
+/*  extended_left_transducer                                       */
 /*                                                                 */
 /*******************************************************************/
 
-Transducer *extended_context( Transducer *t, Character m1, Character m2 )
-
+static Transducer *extended_left_transducer( Transducer *t, 
+					     Character m1, Character m2 )
 {
   if (t == NULL) // empty context
     return pi_machine(TheAlphabet);
 
-  // Extended context transducer
+  // Extended left context transducer
 
   // <R> >> (<L> >> $T$)
   Transducer *tmp=&t->freely_insert( Label(m1) );
@@ -1475,17 +1475,17 @@ Transducer *extended_context( Transducer *t, Character m1, Character m2 )
 
 /*******************************************************************/
 /*                                                                 */
-/*  replace_context                                                */
+/*  left_context                                                   */
 /*                                                                 */
 /*******************************************************************/
 
-Transducer *replace_context( Transducer *t, Character m1, Character m2 )
+static Transducer *left_context( Transducer *t, Character m1, Character m2 )
 
 {
-  // $C$ = .* (<L> >> (<R> >> $T$))
-  Transducer *ct = extended_context(t, m1, m2);
+  // .* (<R> >> (<L> >> $T$)) || !(.*<L>)
+  Transducer *ct = extended_left_transducer(t, m1, m2);
 
-  // <R>*<L> .*
+  // <R>* <L> .*
   Transducer *mt = one_label_transducer(Label(m1));
   mt->root_node()->add_arc(Label(m2), mt->root_node(), mt );
   add_pi_transitions(mt, mt->root_node()->target_node(Label(m1)),TheAlphabet);
@@ -1496,6 +1496,17 @@ Transducer *replace_context( Transducer *t, Character m1, Character m2 )
   mt->alphabet.copy(TheAlphabet);
   Transducer *no_mt = &!*mt;
 
+  {
+    static int print=1;
+    if (print) {
+      print = 0;
+      Transducer *temp = &(ct->copy());
+      temp = &(no_ct->copy());
+      temp = &(mt->copy());
+      temp = &(no_mt->copy());
+    }
+  }
+      
   Transducer *t1 = &(*no_ct + *mt);
   delete no_ct;
   delete mt;
@@ -1596,8 +1607,8 @@ Transducer *replace( Transducer *ct, Repl_Type type, bool optional )
 /*                                                                 */
 /*******************************************************************/
 
-Transducer *replace_transducer( Transducer *ct, Character lm, Character rm, 
-				Repl_Type type )
+static Transducer *replace_transducer( Transducer *ct, Character lm, 
+				       Character rm, Repl_Type type )
 {
   // insert boundary markers into the center transducer
 
@@ -1634,6 +1645,9 @@ Transducer *replace_transducer( Transducer *ct, Character lm, Character rm,
 Transducer *replace_in_context( Transducer *t, Repl_Type type, Contexts *c,
 				bool optional )
 {
+  // The implementation of the replace operators is based on
+  // "The Replace Operator" by Lauri Karttunen
+
   if (!Alphabet_Defined)
     error("The replace operators require the definition of an alphabet");
 
@@ -1645,7 +1659,7 @@ Transducer *replace_in_context( Transducer *t, Repl_Type type, Contexts *c,
   Character rightm = TheAlphabet.new_marker();
 
   /////////////////////////////////////////////////////////////
-  // Create the insert boundary transducer (.|<>:<L>|<>:<R>)*
+  // Create the insert boundaries transducer (.|<>:<L>|<>:<R>)*
   /////////////////////////////////////////////////////////////
   
   Transducer *ibt=pi_machine(TheAlphabet);
@@ -1654,7 +1668,7 @@ Transducer *replace_in_context( Transducer *t, Repl_Type type, Contexts *c,
   root->add_arc( Label(Label::epsilon, rightm),root, ibt);
 
   /////////////////////////////////////////////////////////////
-  // Create the remove boundary transducer (.|<L>:<>|<R>:<>)*
+  // Create the remove boundaries transducer (.|<L>:<>|<R>:<>)*
   /////////////////////////////////////////////////////////////
 
   Transducer *rbt=pi_machine(TheAlphabet);
@@ -1667,7 +1681,7 @@ Transducer *replace_in_context( Transducer *t, Repl_Type type, Contexts *c,
   TheAlphabet.insert(Label(rightm));
 
   /////////////////////////////////////////////////////////////
-  // Create the constrain boundary transducer !(.*<L><R>.*)
+  // Create the constrain boundaries transducer !(.*<L><R>.*)
   /////////////////////////////////////////////////////////////
 
   Transducer *cbt=constrain_boundary_transducer(leftm, rightm);
@@ -1677,12 +1691,12 @@ Transducer *replace_in_context( Transducer *t, Repl_Type type, Contexts *c,
   /////////////////////////////////////////////////////////////
 
   // left context transducer:  .* (<R> >> (<L> >> $T$)) || !(.*<L>)
-  Transducer *lct = replace_context(c->left, leftm, rightm);
+  Transducer *lct = left_context(c->left, leftm, rightm);
 
   // right context transducer:  (<R> >> (<L> >> $T$)) .* || !(<R>.*)
   Transducer *tmp = &c->right->reverse();
   delete c->right;
-  Transducer *t2 = replace_context(tmp, rightm, leftm);
+  Transducer *t2 = left_context(tmp, rightm, leftm);
   Transducer *rct = &t2->reverse();
   delete t2;
 
@@ -1700,21 +1714,28 @@ Transducer *replace_in_context( Transducer *t, Repl_Type type, Contexts *c,
   // build the conditional replacement transducer
   /////////////////////////////////////////////////////////////
 
+  tmp = &(ibt->copy());
+  tmp = &(cbt->copy());
+  tmp = &(lct->copy());
+  tmp = &(rct->copy());
+  tmp = &(rt->copy());
+  tmp = &(rbt->copy());
+
   tmp = ibt;
   tmp = &(*ibt || *cbt);
   delete(ibt);
   delete(cbt);
 
-  if (type == repl_up || type == repl_right) {
-    t2 = &(*tmp || *rct);
-    delete tmp;
-    delete rct;
-    tmp = t2;
-  }
   if (type == repl_up || type == repl_left) {
     t2 = &(*tmp || *lct);
     delete tmp;
     delete lct;
+    tmp = t2;
+  }
+  if (type == repl_up || type == repl_right) {
+    t2 = &(*tmp || *rct);
+    delete tmp;
+    delete rct;
     tmp = t2;
   }
 
@@ -1768,24 +1789,6 @@ void add_alphabet( Transducer *t )
 
 /*******************************************************************/
 /*                                                                 */
-/*  store_transducer                                               */
-/*                                                                 */
-/*******************************************************************/
-
-void store_transducer( Transducer *t, char *filename )
-
-{
-  if (filename == NULL)
-    cout << *t;
-  else {
-    ofstream os(filename);
-    os << *t;
-    os.close();
-  }
-}
-
-/*******************************************************************/
-/*                                                                 */
 /*  write_to_file                                                  */
 /*                                                                 */
 /*******************************************************************/
@@ -1798,6 +1801,7 @@ void write_to_file( Transducer *t, char *filename)
     fprintf(stderr,"\nError: Cannot open output file \"%s\"\n\n", filename);
     exit(1);
   }
+  free( filename );
 
   t = explode(t);
   add_alphabet(t);

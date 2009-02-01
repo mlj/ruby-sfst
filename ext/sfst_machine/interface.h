@@ -56,7 +56,6 @@ Range *add_var_values( char *name, Range*);
 Range *add_values( unsigned int, unsigned int, Range*);
 Range *append_values( Range *r2, Range *r );
 void add_alphabet( Transducer* );
-void store_transducer( Transducer *a, char *filename );
 
 // These functions delete their argument automata
 

@@ -16,7 +16,6 @@
 using std::equal_range;
 using std::sort;
 using std::cerr;
-using __gnu_cxx::hash_map;
 
 class ARC {
 public:
