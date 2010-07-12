@@ -1,22 +1,15 @@
-require 'rubygems'
-require 'rake'
- 
 begin
-  require 'echoe'
- 
-  Echoe.new('ruby-sfst', '0.2.0') do |p|
-    p.summary = "A wrapper for the Stuttgart Finite State Transducer Tools (SFST)."
-    p.author = 'Marius L. Jøhndal'
+  require 'jeweler'
+
+  Jeweler::Tasks.new do |p|
+    p.name = "ruby-sfst"
+    p.summary = "Stuttgart Finite State Transducer Tools interface"
+    p.description = "A wrapper for the Stuttgart Finite State Transducer Tools (SFST)."
+    p.authors = ['Marius L. Jøhndal']
     p.email = "mariuslj (at) ifi [dot] uio (dot) no"
-    p.url = "http://github.com/mlj/ruby-sfst"
-    p.ignore_pattern = ["*.gemspec"]
-    p.rdoc_pattern = ["README.rdoc", "lib/*.rb"]
-    p.rubyforge_name = "sfst"
+    p.homepage = "http://github.com/mlj/ruby-sfst"
+    p.rubyforge_project = "sfst"
   end
- 
-rescue LoadError => boom
-  puts "You are missing a dependency required for meta-operations on this gem."
-  puts "#{boom.to_s.capitalize}."
+rescue LoadError
+  puts "Jeweler not available. Install it with: sudo gem install jeweler"
 end
- 
-Dir["#{File.dirname(__FILE__)}/tasks/*.rake"].sort.each { |ext| load ext }
