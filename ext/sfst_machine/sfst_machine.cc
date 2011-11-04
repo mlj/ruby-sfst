@@ -5,6 +5,11 @@
 #include "make-compact.h"
 
 /*:enddoc:*/
+
+#ifndef RSTRING_PTR /* Ruby 1.8 compatibility */
+#define RSTRING_PTR(ptr) RSTRING(ptr)->ptr
+#endif
+
 extern Transducer *Result;
 extern FILE *yyin;
 int yyparse(void);
@@ -56,12 +61,12 @@ static VALUE compile(char *from_filename, char *to_filename, bool compact) // :n
 
 static VALUE compile_regular(VALUE obj, VALUE from_filename, VALUE to_filename)
 {
-  return compile(RSTRING(from_filename)->ptr, RSTRING(to_filename)->ptr, false);
+  return compile(RSTRING_PTR(from_filename), RSTRING_PTR(to_filename), false);
 }
 
 static VALUE compile_compact(VALUE obj, VALUE from_filename, VALUE to_filename)
 {
-  return compile(RSTRING(from_filename)->ptr, RSTRING(to_filename)->ptr, true);
+  return compile(RSTRING_PTR(from_filename), RSTRING_PTR(to_filename), true);
 }
 
 static void compact_transducer_free(CompactTransducer *t)
@@ -86,10 +91,10 @@ static VALUE compact_transducer_init(VALUE obj, VALUE filename)
   FILE *file;
   CompactTransducer *t;
 
-  file = fopen(RSTRING(filename)->ptr, "rb");
+  file = fopen(RSTRING_PTR(filename), "rb");
 
   if (!file) {
-    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s", RSTRING(filename)->ptr);
+    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s", RSTRING_PTR(filename));
   }
 
   try {
@@ -97,7 +102,7 @@ static VALUE compact_transducer_init(VALUE obj, VALUE filename)
     fclose(file);
   }
   catch (const char *p) {
-    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s: %s", RSTRING(filename)->ptr, p);
+    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s: %s", RSTRING_PTR(filename), p);
   }
 
   DATA_PTR(obj) = t;
@@ -114,7 +119,7 @@ static VALUE compact_transducer_analyze(VALUE self, VALUE string)
   Data_Get_Struct(self, CompactTransducer, t);
 
   std::vector<CAnalysis> analyses;
-  t->analyze_string(RSTRING(string)->ptr, analyses);
+  t->analyze_string(RSTRING_PTR(string), analyses);
 
   for (size_t k = 0; k < analyses.size(); k++) {
     accepted = Qtrue;
@@ -151,10 +156,10 @@ static VALUE regular_transducer_init(VALUE obj, VALUE filename)
   FILE *file;
   Transducer *t;
 
-  file = fopen(RSTRING(filename)->ptr, "rb");
+  file = fopen(RSTRING_PTR(filename), "rb");
 
   if (!file) {
-    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s", RSTRING(filename)->ptr);
+    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s", RSTRING_PTR(filename));
   }
 
   try {
@@ -162,7 +167,7 @@ static VALUE regular_transducer_init(VALUE obj, VALUE filename)
     fclose(file);
   }
   catch (const char *p) {
-    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s: %s", RSTRING(filename)->ptr, p);
+    rb_raise(rb_eRuntimeError, "Unable to open SFST file %s: %s", RSTRING_PTR(filename), p);
   }
 
   DATA_PTR(obj) = t;
@@ -353,7 +358,7 @@ static bool _regular_transducer_yield(Transducer *t, Node *node, VALUE result_ar
 static VALUE _regular_transducer_analyze_or_generate(Transducer *t, VALUE string, bool generate)
 {
   Transducer *a2, *a3;
-  Transducer a1(RSTRING(string)->ptr, &(t->alphabet), false);
+  Transducer a1(RSTRING_PTR(string), &(t->alphabet), false);
   if (generate) {
     a2 = &(a1 || *t);
     a3 = &(a2->upper_level());
