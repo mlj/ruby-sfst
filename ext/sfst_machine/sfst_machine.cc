@@ -206,7 +206,7 @@ static VALUE rb_ary_push_pair(VALUE ary, VALUE a, VALUE b)
   return ary;
 }
 
-static void _regular_transducer_generate(Transducer *t, Node *node, 
+static void _regular_transducer_generate(Transducer *t, Node *node,
     Node2Int &visitations, VALUE a, int mode, bool epsilons)
 {
   if (node->is_final())
@@ -221,7 +221,7 @@ static void _regular_transducer_generate(Transducer *t, Node *node,
     size_t i;
     for (i = 0; i < arc.size(); i++)
       if (visitations[n] < visitations[arc[i]->target_node()])
-	break;
+        break;
     arc.push_back(NULL);
     for (size_t k = arc.size() - 1; k > i; k--)
       arc[k] = arc[k - 1];
@@ -299,7 +299,7 @@ static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, 
     rb_raise(rb_eRuntimeError, "invalid mode");
 
   if (!rb_block_given_p())
-    rb_raise(rb_eRuntimeError, "block expected"); 
+    rb_raise(rb_eRuntimeError, "block expected");
 
   Node2Int visitations;
   Transducer *a2;
@@ -314,7 +314,7 @@ static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, 
       a2 = t;
       break;
   }
-  _regular_transducer_generate(a2, a2->root_node(), visitations, rb_ary_new(), 
+  _regular_transducer_generate(a2, a2->root_node(), visitations, rb_ary_new(),
       levels, epsilons);
 
   return Qnil;
