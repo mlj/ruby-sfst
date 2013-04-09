@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "ruby-sfst"
-  s.version = "0.3.0"
+  s.version = "0.3.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-  s.authors = ["Marius L. J\303\270hndal"]
-  s.date = "2011-11-04"
+  s.authors = ["Marius L. J\u{f8}hndal"]
+  s.date = "2013-04-09"
   s.description = "A wrapper for the Stuttgart Finite State Transducer Tools (SFST)."
   s.email = "mariuslj (at) ifi [dot] uio (dot) no"
   s.extensions = ["ext/sfst_machine/extconf.rb"]
@@ -50,6 +50,7 @@ Gem::Specification.new do |s|
     "ext/sfst_machine/utf8.h",
     "lib/.gitignore",
     "lib/sfst.rb",
+    "ruby-sfst.gemspec",
     "test/.gitignore",
     "test/test_sfst.fst",
     "test/test_sfst.rb"
@@ -57,7 +58,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://github.com/mlj/ruby-sfst"
   s.require_paths = ["lib"]
   s.rubyforge_project = "sfst"
-  s.rubygems_version = "1.8.11"
+  s.rubygems_version = "1.8.23"
   s.summary = "Stuttgart Finite State Transducer Tools interface"
 
   if s.respond_to? :specification_version then
