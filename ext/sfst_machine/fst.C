@@ -439,14 +439,14 @@ void Transducer::enumerate_paths_node( Node *node, vector<Label> &path,
   if (node->is_final())
     result.push_back(new Transducer(path));
 
-  for( ArcsIter it(node->arcs()); it; it++ ) {
-    Arc *arc=it;
+  for( ArcsIter it_arc(node->arcs()); it_arc; it_arc++ ) {
+    Arc *arc=it_arc;
 
-    NodeHashSet::iterator it=previous.insert(node).first;
+    NodeHashSet::iterator it_node=previous.insert(node).first;
     path.push_back(arc->label());
     enumerate_paths_node( arc->target_node(), path, previous, result );
     path.pop_back();
-    previous.erase(it);
+    previous.erase(it_node);
   }
 }
 

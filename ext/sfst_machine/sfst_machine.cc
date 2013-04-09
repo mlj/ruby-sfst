@@ -53,7 +53,7 @@ static VALUE compile(char *from_filename, char *to_filename, bool compact) // :n
     fclose(out_file);
   }
   catch(const char* p) {
-    rb_raise(rb_eRuntimeError, p);
+    rb_raise(rb_eRuntimeError, "%s", p);
   }
 
   return Qnil;
