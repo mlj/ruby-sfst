@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+* Replaced jeweler with a plain Rakefile
+
 ## 0.3.1
 
 * Fixes for GCC 4.7
