@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+* Fixes for tricky hash_map includes
+
 ## 0.4.0
 
 * Replaced jeweler with a plain Rakefile
