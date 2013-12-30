@@ -2,27 +2,10 @@ require 'sfst'
 require 'test/unit'
 
 TEST_DIRECTORY = File.expand_path(File.dirname(__FILE__))
-TEST_SCRIPT_FILE = File.join(TEST_DIRECTORY, 'test_sfst.fst')
-TEST_COMPILED_FILE = File.join(TEST_DIRECTORY, 'test_sfst.a')
 TEST_COMPILED_COMPACT_FILE = File.join(TEST_DIRECTORY, 'test_sfst_compact.a')
 TEST_COMPILED_REGULAR_FILE = File.join(TEST_DIRECTORY, 'test_sfst_regular.a')
 
-class SFSTTestCase < Test::Unit::TestCase
-  def test_sfst_compile_regular
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_FILE)
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_FILE, :compact => false)
-  end
-
-  def test_sfst_compile_compact
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_FILE, :compact => true)
-  end
-end
-
 class RegularTransducerTestCase < Test::Unit::TestCase
-  def setup
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_REGULAR_FILE, :compact => false)
-  end
-
   def test_analyze_acceptance
     fst = SFST::RegularTransducer.new(TEST_COMPILED_REGULAR_FILE)
     assert_equal true, fst.accepted_analysis?('foo')
@@ -101,10 +84,6 @@ class RegularTransducerTestCase < Test::Unit::TestCase
 end
 
 class CompactTransducerTestCase < Test::Unit::TestCase
-  def setup
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_COMPACT_FILE, :compact => true)
-  end
-
   def test_analyze_acceptance
     fst = SFST::CompactTransducer.new(TEST_COMPILED_COMPACT_FILE)
     assert_equal true, fst.accepted_analysis?('foo')
@@ -119,11 +98,6 @@ class CompactTransducerTestCase < Test::Unit::TestCase
 end
 
 class StressTestCase < Test::Unit::TestCase
-  def setup
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_REGULAR_FILE, :compact => false)
-    SFST::compile(TEST_SCRIPT_FILE, TEST_COMPILED_COMPACT_FILE, :compact => true)
-  end
-
   def test_repeated_analyses_regular
     fst = SFST::RegularTransducer.new(TEST_COMPILED_REGULAR_FILE)
     65536.times do

@@ -1,5 +1,7 @@
 # Changelog
 
+* Dropped support for compiling FSTs from Ruby; use fst-compiler-utf8 instead
+
 ## 0.4.1
 
 * Fixes for tricky hash_map includes
