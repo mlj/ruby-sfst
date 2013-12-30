@@ -10,64 +10,9 @@
 #define RSTRING_PTR(ptr) RSTRING(ptr)->ptr
 #endif
 
-extern Transducer *Result;
-extern FILE *yyin;
-int yyparse(void);
-
 VALUE mSFST = Qnil;
 VALUE mCompactTransducer = Qnil;
 VALUE mRegularTransducer = Qnil;
-
-static VALUE compile(char *from_filename, char *to_filename, bool compact) // :nodoc:
-{
-  FILE *in_file, *out_file;
-
-  in_file = fopen(from_filename, "rb");
-
-  if (!in_file) {
-    rb_raise(rb_eRuntimeError, "Unable to open grammar file %s", from_filename);
-  }
-
-  FileName = from_filename;
-  Result = NULL;
-  TheAlphabet.utf8 = UTF8;
-  yyin = in_file;
-
-  try {
-    yyparse();
-    Result->alphabet.utf8 = UTF8;
-
-    fclose(in_file);
-
-    if (!(out_file = fopen(to_filename, "wb"))) {
-      rb_raise(rb_eRuntimeError, "Unable to open output file %s", to_filename);
-    }
-
-    if (compact) {
-      MakeCompactTransducer ca(*Result);
-      delete Result;
-      ca.store(out_file);
-    } else
-      Result->store(out_file);
-
-    fclose(out_file);
-  }
-  catch(const char* p) {
-    rb_raise(rb_eRuntimeError, "%s", p);
-  }
-
-  return Qnil;
-}
-
-static VALUE compile_regular(VALUE obj, VALUE from_filename, VALUE to_filename)
-{
-  return compile(RSTRING_PTR(from_filename), RSTRING_PTR(to_filename), false);
-}
-
-static VALUE compile_compact(VALUE obj, VALUE from_filename, VALUE to_filename)
-{
-  return compile(RSTRING_PTR(from_filename), RSTRING_PTR(to_filename), true);
-}
 
 static void compact_transducer_free(CompactTransducer *t)
 {
@@ -398,8 +343,6 @@ extern "C"
 void Init_sfst_machine(void)
 {
   mSFST = rb_define_module("SFST");
-  rb_define_module_function(mSFST, "_compile_regular", (VALUE (*)(...))compile_regular, 2);
-  rb_define_module_function(mSFST, "_compile_compact", (VALUE (*)(...))compile_compact, 2);
 
   mCompactTransducer = rb_define_class_under(mSFST, "CompactTransducerMachine", rb_cObject);
   rb_define_alloc_func(mCompactTransducer, compact_transducer_alloc);
