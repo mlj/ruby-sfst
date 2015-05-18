@@ -4,7 +4,6 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'sfst/version'
 
 Gem::Specification.new do |s|
-  s.add_development_dependency 'bundler', '~> 1.0'
   s.authors = ["Marius L. Jøhndal"]
   s.description = %q{A wrapper for the Stuttgart Finite State Transducer Tools (SFST).}
   s.summary = %q{Stuttgart Finite State Transducer Tools interface}
@@ -25,4 +24,7 @@ Gem::Specification.new do |s|
   s.extensions = ["ext/sfst_machine/extconf.rb"]
   s.test_files += Dir.glob("test/*.rb")
   s.version = SFST::VERSION
+
+  s.add_development_dependency 'bundler', '~> 1.0'
+  s.add_development_dependency 'test-unit', '~> 3.0'
 end

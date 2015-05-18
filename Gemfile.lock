@@ -6,7 +6,10 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
+    power_assert (0.2.3)
     rake (10.1.0)
+    test-unit (3.0.9)
+      power_assert
     yard (0.8.7)
 
 PLATFORMS
@@ -16,4 +19,5 @@ DEPENDENCIES
   bundler (~> 1.0)
   rake
   ruby-sfst!
+  test-unit (~> 3.0)
   yard
