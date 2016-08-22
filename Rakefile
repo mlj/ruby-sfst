@@ -1,23 +1,14 @@
-# coding: utf-8
-require 'bundler'
-Bundler::GemHelper.install_tasks
+require "bundler/gem_tasks"
+require "rspec/core/rake_task"
 
-namespace :doc do
-  require 'yard'
-  YARD::Rake::YardocTask.new do |task|
-  task.files   = ['README.md', 'lib/**/*.rb']
-  task.options = [
-    '--output-dir', 'doc/yard',
-    '--markup', 'markdown',
-    ]
-  end
+RSpec::Core::RakeTask.new(:spec)
+
+require "rake/extensiontask"
+
+task :build => :compile
+
+Rake::ExtensionTask.new("sfst") do |ext|
+  ext.lib_dir = "lib/sfst"
 end
 
-require 'rake/testtask'
-
-Rake::TestTask.new do |t|
-    t.libs << 'test'
-end
-
-desc "Run tests"
-task :default => :test
+task :default => [:clobber, :compile, :spec]

@@ -4,7 +4,8 @@
 #
 # Written by Marius L. Jøhndal, 2008.
 #
-require 'sfst_machine'
+require 'sfst/version'
+require 'sfst/sfst'
 
 module SFST
   # Compiles an SFST transducer +source+ and saves it as +machine+.

@@ -340,7 +340,7 @@ static VALUE regular_transducer_analyze(VALUE self, VALUE string)
 
 extern "C"
 
-void Init_sfst_machine(void)
+void Init_sfst(void)
 {
   mSFST = rb_define_module("SFST");
 
