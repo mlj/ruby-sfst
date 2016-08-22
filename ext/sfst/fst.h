@@ -27,12 +27,19 @@
 using std::map;
 using std::set;
 using std::vector;
+using std::istream;
+using std::ostream;
 
 #include "mem.h"
 
 namespace SFST {
 
-  typedef unsigned short VType;
+  // data type for table indices
+  typedef unsigned Index;
+  static const Index undef = (Index)(-1);
+
+  // data type of the generation counter for transducer traversal
+  typedef unsigned short VType;  
 
   extern int Quiet;
 
@@ -40,17 +47,14 @@ namespace SFST {
   class Arc;
   class Arcs;
   class Transducer;
+  class Node2Int;
 
   class Transition;
-
 
   struct hashf {
     size_t operator()(const Node *n) const { return (size_t) n; }
   };
-  struct equalf {
-    int operator()(const Node *n1, const Node *n2) const { return n1==n2; }
-  };
-  typedef hash_set<Node*, hashf, equalf> NodeHashSet;
+  typedef hash_set<const Node*, hashf> NodeHashSet;
 
   /*****************  class Arc  *************************************/
 
@@ -87,9 +91,15 @@ namespace SFST {
     const Node *target_node( Label l ) const;
     void add_arc( Label, Node*, Transducer* );
     int remove_arc( Arc* );
-    bool is_empty( void ) const { return !(first_arcp || first_epsilon_arcp); };
-    bool epsilon_transition_exists( void ) const { return first_epsilon_arcp != NULL; };
-    bool non_epsilon_transition_exists( void ) const { return first_arcp != NULL; };
+    bool is_empty( void ) const {
+      return !(first_arcp || first_epsilon_arcp);
+    };
+    bool epsilon_transition_exists( void ) const {
+      return first_epsilon_arcp != NULL;
+    };
+    bool non_epsilon_transition_exists( void ) const {
+      return first_arcp != NULL; 
+    };
     int size( void ) const;
 
     friend class ArcsIter;
@@ -144,12 +154,13 @@ namespace SFST {
   class Node {
 
   private:
-    Arcs arcsp;
-    Node *forwardp;
-    VType visited;
-    bool final;
+    Arcs   arcsp;
+    Node   *forwardp;
+    VType  visited;
+    bool   final;
 
   public:
+    Index index;
     Node( void ) { init(); };
     void init( void );
     bool is_final( void ) const { return final; };
@@ -171,52 +182,6 @@ namespace SFST {
     bool check_visited( VType vm ) // leaves the visited flag unchanged
     { return (visited==vm); };
   };
-
-
-/*****************  class Node2Int *********************************/
-
-class Node2Int {
-
-  struct hashf {
-    size_t operator()(const Node *node) const { 
-      return (size_t)node;
-    }
-  };
-  struct equalf {
-    int operator()(const Node *n1, const Node *n2) const {
-      return (n1 == n2);
-    }
-  };
-  typedef hash_map<Node*, int, hashf, equalf> NL;
-
- private:
-  NL number;
-
-public:
-  int &operator[]( Node *node ) {
-    NL::iterator it=number.find(node);
-    if (it == number.end())
-      return number.insert(NL::value_type(node, 0)).first->second;
-    return it->second;
-  };
-};
-
-
-/*****************  class NodeNumbering ****************************/
-
-class NodeNumbering {
-
- private:
-  vector<Node*> nodes;
-  Node2Int nummap;
-  void number_node( Node*, Transducer& );
-
- public:
-  NodeNumbering( Transducer& );
-  int operator[]( Node *node ) { return nummap[node]; };
-  size_t number_of_nodes( void ) { return nodes.size(); };
-  Node *get_node( size_t n ) { return nodes[n]; };
-};
 
 
   /*****************  class PairMapping  ****************************/
@@ -260,7 +225,7 @@ class NodeNumbering {
     Node root;
     Mem mem;
 
-    typedef std::set<Label, Label::label_cmp> LabelSet;
+    typedef set<Label, Label::label_cmp> LabelSet;
     typedef hash_map<Character, char*> SymbolMap;
 
     void incr_vmark( void ) {
@@ -284,7 +249,6 @@ class NodeNumbering {
     bool infinitely_ambiguous_node( Node* );
     bool is_cyclic_node( Node*, NodeHashSet &visited );
     bool is_automaton_node( Node* );
-    bool generate1( Node*, Node2Int&, char*, int, char*, int, FILE* );
     void store_symbols( Node*, SymbolMap&, LabelSet& );
 
     void splice_nodes(Node*, Node*, Label sl, Transducer*, Transducer*);
@@ -296,8 +260,10 @@ class NodeNumbering {
     void read_transducer_binary( FILE* );
     void read_transducer_text( FILE* );
 
-    void build_TT( Node *node, vector<Transition> &transtab, NodeNumbering &nn);
+    void build_TT( Node *node, vector<Transition> &transtab );
     size_t size_node( Node *node );
+
+    void index_nodes( Node*, size_t&, size_t&, vector<Node*>* );
 
   public:
     VType vmark;
@@ -308,15 +274,15 @@ class NodeNumbering {
 
     Alphabet alphabet; // The set of all labels, i.e. character pairs
 
-  Transducer( void ) : root(), mem()
-      { vmark = 0; deterministic = minimised = false; };
-
-    Transducer( Transducer&, vector<size_t>&, NodeNumbering&, size_t );
+  Transducer( bool empty=false ) : root(), mem()
+      { vmark = 0; deterministic = minimised = empty; };
+    
+    Transducer( Transducer&, vector<size_t>&, size_t );
 
     // convertion of a string to an transducer
     Transducer( char *s, const Alphabet *a=NULL, bool extended=false );
     // reads a word list from a file and stores it in the transducer
-    Transducer( std::istream&, const Alphabet *a=NULL, bool verbose=false );
+    Transducer( istream&, const Alphabet *a=NULL, bool verbose=false );
     // reads a transducer from a binary or text file
     Transducer( FILE*, bool binary=true );
     // turns a sequence of labels into a transducer
@@ -328,7 +294,7 @@ class NodeNumbering {
     void expand_node( Node *origin, Label &l, Node *target, Transducer *a, set<char*> &s );
     void copy_nodes( Node *search_node, Transducer *copy_tr,
 		     Node *start_node,
-		     NodeNumbering &nn, map<int, Node*> &mapper );
+		     map<int, Node*> &mapper );
     Transducer &remove_epsilons();
     // ...HFST additions end
 
@@ -339,12 +305,13 @@ class NodeNumbering {
     void add_string( char *s, bool extended=false, Alphabet *a=NULL );
     void complete_alphabet( void );
     void minimise_alphabet( void );
-
+    std::pair<size_t,size_t> nodeindexing( vector<Node*> *nodearray=NULL );
+ 
     int print_strings( FILE*, bool with_brackets=true ); //enumerate all strings
 
     bool analyze_string( char *s, FILE *file, bool with_brackets=true );
     bool generate_string( char *s, FILE *file, bool with_brackets=true );
-    bool generate( FILE *file, bool separate=false );
+    void generate( FILE *file, int max=-1 );
 
     void clear( void );      // clears the transducer. The resulting transducer
     // is like one created with Transducer()
@@ -360,7 +327,7 @@ class NodeNumbering {
       { return level(lower); };
     Transducer &upper_level( void )   // creates an transducer for the "upper" language
       { return level(upper); };
-    Transducer &determinise( void );  // creates a deterministic transducer
+    Transducer &determinise( bool copy_alphabet=true ); // creates a deterministic transducer
     Transducer &rev_det_minimise( bool verbose ); 
     Transducer &hopcroft_minimise( bool verbose );
     Transducer &minimise( bool verbose=true ) {
@@ -375,9 +342,9 @@ class NodeNumbering {
 
     size_t size();
 
-    void build_transtab( vector<Transition> &transtab, NodeNumbering &nn );
+    void build_transtab( vector<Transition> &transtab );
 
-    Transducer &reverse( void );            // reverse language
+    Transducer &reverse( bool copy_alphabet=true );  // reverse language
     Transducer &operator|( Transducer& );   // union, disjunction
     Transducer &operator+( Transducer& );   // concatenation
     Transducer &operator/( Transducer& );   // subtraction
@@ -393,10 +360,10 @@ class NodeNumbering {
     bool is_empty( void );	      // For efficiency reasons, these functions
     bool generates_empty_string( void );// are better called after minimisation
   
-    friend class NodeNumbering;
     friend class EdgeCount;
     friend class MakeCompactTransducer;
-    friend std::ostream &operator<<(std::ostream&, Transducer&);
+    friend class Minimiser;
+    friend ostream &operator<<(ostream&, Transducer&);
   };
 }
 #endif

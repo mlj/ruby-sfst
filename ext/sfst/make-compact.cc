@@ -26,7 +26,7 @@ namespace SFST {
     };
   };
 
-  typedef hash_map<Label, size_t, Label::label_hash, Label::label_eq> LabelNumber;
+  typedef map<Label, size_t, Label::label_cmp> LabelNumber;
 
 
   /*******************************************************************/
@@ -75,18 +75,17 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  void MakeCompactTransducer::count_arcs( Node *node, NodeNumbering &index, 
-					  VType vmark )
+  void MakeCompactTransducer::count_arcs( Node *node, VType vmark )
   {
     if (!node->was_visited( vmark )) {
-      unsigned int n = index[node];
+      unsigned n = (unsigned)node->index;
       finalp[n] = node->is_final();
       first_arc[n] = 0;
       Arcs *arcs=node->arcs();
       for( ArcsIter p(arcs); p; p++ ) {
 	Arc *arc=p;
 	first_arc[n]++;
-	count_arcs(arc->target_node(), index, vmark);
+	count_arcs(arc->target_node(), vmark);
       }
     }
   }
@@ -98,17 +97,16 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  void MakeCompactTransducer::store_arcs( Node *node, NodeNumbering &index, 
-					  VType vmark )
+  void MakeCompactTransducer::store_arcs( Node *node, VType vmark )
   {
     if (!node->was_visited( vmark )) {
-      unsigned int n=first_arc[index[node]];
+      unsigned int n=first_arc[node->index];
       Arcs *arcs=node->arcs();
       for( ArcsIter p(arcs); p; p++ ) {
         Arc *arc=p;
 	label[n] = arc->label();
-	target_node[n++] = index[arc->target_node()];
-	store_arcs(arc->target_node(), index, vmark);
+	target_node[n++] = (unsigned)arc->target_node()->index;
+	store_arcs(arc->target_node(), vmark);
       }
     }
   }
@@ -128,19 +126,17 @@ namespace SFST {
       exit(1);
     }
 
-    NodeNumbering index(a);
-
+    unsigned number_of_nodes = (unsigned)a.nodeindexing().first;
     alphabet.copy(a.alphabet);
 
     // memory allocation
-    number_of_nodes = (unsigned)index.number_of_nodes();
     finalp = new char[number_of_nodes];
     first_arc = new unsigned int[number_of_nodes+1];
 
     // count the number of outgoing arcs for each node
     // and store them in first_arc[]
     a.incr_vmark();
-    count_arcs( a.root_node(), index, a.vmark );
+    count_arcs( a.root_node(), a.vmark );
     for( int n=number_of_nodes; n>0; n-- )
       first_arc[n] = first_arc[n-1];
     first_arc[0] = 0;
@@ -154,7 +150,7 @@ namespace SFST {
 
     // store the arcs
     a.incr_vmark();
-    store_arcs( a.root_node(), index, a.vmark );
+    store_arcs( a.root_node(), a.vmark );
 
     // sort the arcs
     sort( l );

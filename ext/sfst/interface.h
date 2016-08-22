@@ -49,16 +49,10 @@ namespace SFST {
       { return strcmp(s1, s2) < 0; }
     };
     
-    struct eqstr {
-      bool operator()(const char* s1, const char* s2) const
-      { return strcmp(s1, s2) == 0; }
-    };
-
     typedef set<char*, ltstr> RVarSet;
     
-    typedef hash_map<char*, Transducer*, hash<const char*>, eqstr> VarMap;
-    
-    typedef hash_map<char*, Range*, hash<const char*>, eqstr> SVarMap;
+    typedef map<char*, Transducer*, ltstr> VarMap;
+    typedef map<char*, Range*, ltstr> SVarMap;
 
     Range *copy_values( const Range *r );
     Transducer *empty_transducer();

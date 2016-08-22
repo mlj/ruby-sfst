@@ -60,7 +60,7 @@ namespace SFST {
   };
 
 
-  /*****************  class DTransition  ***O**************************/
+  /*****************  class DTransition  *****************************/
 
   class DTransition {
   public:
@@ -109,27 +109,17 @@ namespace SFST {
   };
 
 
-  /*****************  class LabelMapping  ****************************/
+  /*****************  class Label2NodeSet  ****************************/
 
-  class LabelMapping {
+  class Label2NodeSet {
     // This class is used to map a label to a node set
 
   private:
-    struct hashf {
-      size_t operator()(const Label l) const { 
-	return l.lower_char() | (l.upper_char() << 16);
-      }
-    };
-    struct equalf {
-      int operator()(const Label l1, const Label l2) const {
-	return l1==l2;
-      }
-    };
-    typedef hash_map<const Label, NodeSet, hashf, equalf> LabelMap;
+    typedef map<const Label, NodeSet> LabelMap;
     LabelMap lm;
   
   public:
-    LabelMapping(): lm(8) {};
+    Label2NodeSet(): lm() {};
     typedef LabelMap::iterator iterator;
     iterator begin() { return lm.begin(); };
     iterator end() { return lm.end(); };
@@ -139,7 +129,7 @@ namespace SFST {
   
   };
 
-  static void determinise_node( NodeArray&, Node*, Transducer*, NodeMapping&, long );
+  static void determinise_node( NodeArray&, Node*, Transducer*, NodeMapping& );
 
 
 
@@ -183,9 +173,9 @@ namespace SFST {
       Node *nn = *it;
       if (nn->arcs()->non_epsilon_transition_exists())
 	node[sizev++] = nn;
-      final |= nn->is_final();
+      if (nn->is_final())
+	final = true;
     }
-    std::sort(node, node+sizev);
   }
 
 
@@ -218,7 +208,7 @@ namespace SFST {
   static void compute_transitions( NodeArray &na, vector<DTransition> &t )
 
   {
-    LabelMapping lmap;
+    Label2NodeSet lmap;
     
     // for all nodes in the current set
     for( size_t i=0; i<na.size(); i++) {
@@ -233,7 +223,7 @@ namespace SFST {
     }
   
     t.reserve(lmap.size());
-    for( LabelMapping::iterator it=lmap.begin(); it!=lmap.end(); it++ )
+    for( Label2NodeSet::iterator it=lmap.begin(); it!=lmap.end(); it++ )
       t.push_back(DTransition(it->first, new NodeArray( it->second )));
   }
 
@@ -245,10 +235,8 @@ namespace SFST {
   /*******************************************************************/
 
   static void determinise_node( NodeArray &na, Node *node, Transducer *a, 
-				NodeMapping &map, long depth )
+				NodeMapping &map )
   {
-    if (depth > 10000)
-      fprintf(stderr,"\r%ld",depth);
     node->set_final(na.is_final());
 
     vector<DTransition> t;
@@ -261,7 +249,7 @@ namespace SFST {
 	Node *target_node = a->new_node();
 	map[t[i].nodes] = target_node;
 	node->add_arc( t[i].label, target_node, a );
-	determinise_node( *t[i].nodes, target_node, a, map, depth+1 );
+	determinise_node( *t[i].nodes, target_node, a, map );
       }
       else {
 	delete t[i].nodes;
@@ -277,17 +265,15 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer &Transducer::determinise()
+  Transducer &Transducer::determinise( bool copy_alphabet )
 
   {
     if (deterministic)
       return copy();
 
-    // initialisations
-    NodeMapping map;
-
     Transducer *a = new Transducer();
-    a->alphabet.copy(alphabet);
+    if (copy_alphabet)
+      a->alphabet.copy(alphabet);
 
     // creation of the initial node set consisting of all nodes
     // reachable from the start node via epsilon transitions.
@@ -299,10 +285,11 @@ namespace SFST {
     }
 
     // map the node set to the new root node
+    NodeMapping map;
     map[na] = a->root_node();
 
     // determinise the transducer recursively
-    determinise_node( *na, a->root_node(), a, map, 0);
+    determinise_node( *na, a->root_node(), a, map );
     a->deterministic = 1;
     return *a;
   }

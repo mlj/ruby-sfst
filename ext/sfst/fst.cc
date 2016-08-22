@@ -182,19 +182,25 @@ namespace SFST {
 
   /*******************************************************************/
   /*                                                                 */
-  /*  NodeNumbering::number_node                                     */
+  /*  Transducer::index_nodes                                        */
   /*                                                                 */
   /*******************************************************************/
 
-  void NodeNumbering::number_node( Node *node, Transducer &a )
+  void Transducer::index_nodes( Node *node, size_t &node_count,
+				size_t &transition_count,
+				vector<Node*> *nodearray )
 
   {
-    if (!node->was_visited( a.vmark )) {
-      nummap[node] = (int)nodes.size();
-      nodes.push_back(node);
+    if (!node->was_visited( vmark )) {
+      node->index = (Index)node_count++;
+      if (nodearray)
+	nodearray->push_back(node);
+
       for( ArcsIter p(node->arcs()); p; p++ ) {
 	Arc *arc=p;
-	number_node( arc->target_node(), a );
+	transition_count++;
+	index_nodes( arc->target_node(), node_count, 
+		     transition_count, nodearray );
       }
     }
   }
@@ -202,15 +208,19 @@ namespace SFST {
 
   /*******************************************************************/
   /*                                                                 */
-  /*  NodeNumbering::NodeNumbering                                   */
+  /*  Transducer::nodeindexing                                       */
   /*                                                                 */
   /*******************************************************************/
 
-  NodeNumbering::NodeNumbering( Transducer &a )
+  std::pair<size_t,size_t> Transducer::nodeindexing( vector<Node*> *nodearray )
 
   {
-    a.incr_vmark();
-    number_node( a.root_node(), a );
+    size_t node_count = 0;
+    size_t transition_count = 0;
+    incr_vmark();
+    index_nodes( root_node(), node_count, transition_count, nodearray );
+
+    return std::pair<size_t,size_t>(node_count, transition_count);
   }
 
 
@@ -477,8 +487,8 @@ namespace SFST {
     if (node->is_final())
       result.push_back(new Transducer(path));
 
-    for( ArcsIter it_arc(node->arcs()); it_arc; it_arc++ ) {
-      Arc *arc=it_arc;
+    for( ArcsIter it(node->arcs()); it; it++ ) {
+      Arc *arc=it;
 
       NodeHashSet::iterator it_node=previous.insert(node).first;
       path.push_back(arc->label());
@@ -659,24 +669,23 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  static void print_node( ostream &s, Node *node, NodeNumbering &index, 
-			  VType vmark, Alphabet &abc )
+  static void print_node( ostream &s, Node *node, VType vmark, Alphabet &abc )
 
   {
     if (!node->was_visited( vmark )) {
       Arcs *arcs=node->arcs();
       for( ArcsIter p(arcs); p; p++ ) {
 	Arc *arc=p;
-	s << index[node] << "\t" << index[arc->target_node()];
+	s << node->index << "\t" << arc->target_node()->index;
 	s << "\t" << abc.write_char(arc->label().lower_char());
 	s << "\t" << abc.write_char(arc->label().upper_char());
 	s << "\n";
       }
       if (node->is_final())
-	s << index[node] << "\n";
+	s << node->index << "\n";
       for( ArcsIter p(arcs); p; p++ ) {
 	Arc *arc=p;
-	print_node( s, arc->target_node(), index, vmark, abc );
+	print_node( s, arc->target_node(), vmark, abc );
       }
     }
   }
@@ -691,9 +700,9 @@ namespace SFST {
   ostream &operator<<( ostream &s, Transducer &a )
 
   {
-    NodeNumbering index(a);
+    a.nodeindexing();
     a.incr_vmark();
-    print_node( s, a.root_node(), index, a.vmark,  a.alphabet );
+    print_node( s, a.root_node(), a.vmark,  a.alphabet );
     return s;
   }
 
@@ -743,8 +752,7 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  static void store_node( FILE *file, Node *node, NodeNumbering &index, 
-			  VType vmark )
+  static void store_node( FILE *file, Node *node, VType vmark )
   {
     if (!node->was_visited( vmark )) {
 
@@ -754,9 +762,9 @@ namespace SFST {
       for( ArcsIter p(node->arcs()); p; p++ ) {
 	Arc *arc=p;
 	store_arc_label( file, arc );
-	unsigned int t=index[arc->target_node()];
+	unsigned int t = (unsigned int)arc->target_node()->index;
 	fwrite(&t,sizeof(t),1,file);
-	store_node(file, arc->target_node(), index, vmark );
+	store_node(file, arc->target_node(), vmark );
       }
     }
   }
@@ -768,7 +776,7 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  static void store_lowmem_node( FILE *file, Node *node, NodeNumbering &index,
+  static void store_lowmem_node( FILE *file, Node *node, 
 				 vector<unsigned int> &startpos)
   {
     store_node_info( file, node );
@@ -777,7 +785,7 @@ namespace SFST {
     for( ArcsIter p(node->arcs()); p; p++ ) {
       Arc *arc=p;
       store_arc_label( file, arc );
-      unsigned int t=startpos[index[arc->target_node()]];
+      unsigned int t=startpos[arc->target_node()->index];
       fwrite(&t,sizeof(t),1,file);
     }
   }
@@ -796,14 +804,15 @@ namespace SFST {
     alphabet.store(file);
 
     // storing size of index table
-    NodeNumbering index(*this);
+    vector<Node*> nodearray;
+    nodeindexing( &nodearray );
 
     // compute the start position of the first node
     unsigned int pos=(unsigned int)ftell(file);
     vector<unsigned int> startpos;
-    for( size_t i=0; i<index.number_of_nodes(); i++ ) {
+    for( size_t i=0; i<nodearray.size(); i++ ) {
       startpos.push_back(pos);
-      Node *node=index.get_node(i);
+      Node *node=nodearray[i];
       Arcs *arcs=node->arcs();
       pos += (unsigned)(sizeof(char) // size of final flag
 			+ sizeof(unsigned short) // size of number of arcs
@@ -811,8 +820,8 @@ namespace SFST {
     }
 
     // storing nodes
-    for( size_t i=0; i<index.number_of_nodes(); i++ )
-      store_lowmem_node( file, index.get_node(i), index, startpos );
+    for( size_t i=0; i<nodearray.size(); i++ )
+      store_lowmem_node( file, nodearray[i], startpos );
   }
 
 
@@ -827,11 +836,12 @@ namespace SFST {
   {
     fputc('a',file);
 
-    NodeNumbering index(*this);
+    vector<Node*> nodearray;
+    nodeindexing( &nodearray );
     incr_vmark();
-    unsigned int n=(unsigned)index.number_of_nodes();
+    unsigned int n=(unsigned)nodearray.size();
     fwrite(&n,sizeof(n),1,file);
-    store_node( file, root_node(), index, vmark );
+    store_node( file, root_node(), vmark );
 
     alphabet.store(file);
   }
@@ -1047,15 +1057,15 @@ namespace SFST {
 
   /* Find the corresponding node in 'copy_tr' for 'node'. If needed, create a new node to 'copy_tr'
      and update 'mapper' accordingly. */
-
-  Node *node_in_copy_tr( Node *node, Transducer *copy_tr, NodeNumbering &nn, map<int, Node*> &mapper ) {
-    int node_number = nn[node];  // node number in original transducer
-    map<int,Node*>::iterator it = mapper.find(node_number); // iterator to associated node in copy_tr
+  
+  Node *node_in_copy_tr( Node *node, Transducer *copy_tr, map<int, Node*> &mapper ) {
+    int node_index = (int)node->index;  // node index in original transducer
+    map<int,Node*>::iterator it = mapper.find(node_index); // iterator to associated node in copy_tr
     if (it == mapper.end()) {
       Node *associated_node = copy_tr->new_node(); // create new node in copy_tr
       if (node->is_final())
 	associated_node->set_final(true);
-      mapper[node_number] = associated_node; // and associate it with node_number
+      mapper[node_index] = associated_node; // and associate it with node_index
       return associated_node;
     }
     else
@@ -1076,7 +1086,7 @@ namespace SFST {
 
   void Transducer::copy_nodes( Node *search_node, Transducer *copy_tr,
 			       Node *copy_tr_start_node,
-			       NodeNumbering &nn, map<int, Node*> &mapper ) {
+			       map<int, Node*> &mapper ) {
 
     // go through all arcs leaving from search node
     // (the iterator lists the epsilon arcs first)
@@ -1090,14 +1100,15 @@ namespace SFST {
 	  search_node->set_forward(copy_tr_start_node);  // set epsilon flag
 	  if (arc.target_node()->is_final())
 	    copy_tr_start_node->set_final(true);
-	  copy_nodes(arc.target_node(), copy_tr, copy_tr_start_node, nn, mapper);
+	  copy_nodes(arc.target_node(), copy_tr, copy_tr_start_node, mapper);
 	  search_node->set_forward(NULL);  // remove epsilon flag
 	}
       }
 
       else {
 	// target node in copy_tr
-	Node *copy_tr_end_node = node_in_copy_tr(arc.target_node(), copy_tr, nn, mapper);
+	Node *copy_tr_end_node = 
+	  node_in_copy_tr(arc.target_node(), copy_tr, mapper);
 	// add arc to copy_tr
 	copy_tr_start_node->add_arc( Label(arc.label().lower_char(),
 					   arc.label().upper_char()),
@@ -1105,7 +1116,7 @@ namespace SFST {
 				     copy_tr );
 	// if the target node is not visited, copy nodes recursively
 	if ( !(arc.target_node()->was_visited(vmark)) )
-	  copy_nodes(arc.target_node(), copy_tr, copy_tr_end_node, nn, mapper);
+	  copy_nodes(arc.target_node(), copy_tr, copy_tr_end_node, mapper);
       }
 
     }
@@ -1124,7 +1135,7 @@ namespace SFST {
     if ( deterministic || minimised )
       return this->copy();
 
-    NodeNumbering nn(*this);
+    nodeindexing();
     incr_vmark();
     Transducer *copy_tr = new Transducer();
     copy_tr->alphabet.copy(alphabet);
@@ -1135,10 +1146,10 @@ namespace SFST {
     if (root_node()->is_final())
       copy_tr->root_node()->set_final(true);
     // associate the root_nodes in this and copy_tr 
-    // (node numbering for root_node is zero)
+    // (node indexing for root_node is zero)
     mapper[0] = copy_tr->root_node();
 
-    copy_nodes(root_node(), copy_tr, copy_tr->root_node(), nn, mapper);
+    copy_nodes(root_node(), copy_tr, copy_tr->root_node(), mapper);
     incr_vmark();	
 
     return *copy_tr;

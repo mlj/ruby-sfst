@@ -17,9 +17,13 @@
 #include "basic.h"
 
 #include <set>
+using std::set;
+
 #include <vector>
+using std::vector;
 
 #include <iostream>
+using std::ostream;
 
 #include <cstring>
 
@@ -127,7 +131,7 @@ namespace SFST {
       }
     };
 
-    // hash function needed to store labels in a hash table
+    // comparison function needed to store labels in a map table
     struct label_cmp {
       bool operator() ( const Label l1, const Label l2 ) const {
 	return (l1.lower_char() < l2.lower_char() ||
@@ -145,7 +149,7 @@ namespace SFST {
     };
   };
 
-  typedef std::vector<Label> Analysis;
+  typedef vector<Label> Analysis;
 
 
   /*****************  class Alphabet  *******************************/
@@ -160,7 +164,7 @@ namespace SFST {
     };
 
     // data structure storing labels without repetitions (i.e. as a set)
-    typedef std::set<Label, Label::label_cmp> LabelSet;
+    typedef set<Label, Label::label_cmp> LabelSet;
 
     // hash table used to map the symbols to their codes
     typedef hash_map<const char*, Character, hash<const char*>,eqstr> SymbolMap;
@@ -174,7 +178,6 @@ namespace SFST {
 
   private:
     SymbolMap sm; // maps symbols to codes
-
     CharMap  cm; // maps codes to symbols
     LabelSet ls; // set of labels known to the alphabet
 
@@ -226,7 +229,7 @@ namespace SFST {
     void delete_markers();
 
     // compute the complement of a symbol set
-    void complement( std::vector<Character> &sym );
+    void complement( vector<Character> &sym );
   
     // return the code of the argument symbol
     int symbol2code( const char *s ) const { 
@@ -269,8 +272,8 @@ namespace SFST {
     int next_code( char*&, bool extended=true, bool insert=true );
 
     // convert a character string into a symbol or label sequence
-    void string2symseq( char*, std::vector<Character>& );
-    void string2labelseq( char*, std::vector<Label>& );
+    void string2symseq( char*, vector<Character>& );
+    void string2labelseq( char*, vector<Label>& );
 
     // scan the next label in the argument string
     Label next_label( char*&, bool extended=true );
@@ -283,14 +286,14 @@ namespace SFST {
 
     // disambiguation and printing of analyses
     int compute_score( Analysis &ana );
-    void disambiguate( std::vector<Analysis> &analyses );
+    void disambiguate( vector<Analysis> &analyses );
     char *print_analysis( Analysis &ana, bool both_layers );
 
-    friend std::ostream &operator<<(std::ostream&, const Alphabet&);
+    friend ostream &operator<<(ostream&, const Alphabet&);
   };
 
   // write the alphabet to the output stream (in readable form)
-  std::ostream &operator<<(std::ostream&, const Alphabet&);
+  ostream &operator<<(ostream&, const Alphabet&);
 }
 
 #endif

@@ -151,61 +151,72 @@ static VALUE rb_ary_push_pair(VALUE ary, VALUE a, VALUE b)
   return ary;
 }
 
-static void _regular_transducer_generate(SFST::Transducer *t, SFST::Node *node,
-    SFST::Node2Int &visitations, VALUE a, int mode, bool epsilons)
-{
-  if (node->is_final())
-    rb_yield(a);
+class Gen {
+public:
 
-  visitations[node]++;
+  SFST::Node *node;
+  SFST::Index previous;
+  SFST::Label label;
 
-  vector<SFST::Arc*> arc;
-  for (SFST::ArcsIter p(node->arcs()); p; p++) {
-    SFST::Arc *a = p;
-    SFST::Node *n = a->target_node();
-    size_t i;
-    for (i = 0; i < arc.size(); i++)
-      if (visitations[n] < visitations[arc[i]->target_node()])
-        break;
-    arc.push_back(NULL);
-    for (size_t k = arc.size() - 1; k > i; k--)
-      arc[k] = arc[k - 1];
-    arc[i] = a;
+  Gen(SFST::Node *n, SFST::Label l = SFST::Label::epsilon, SFST::Index p = SFST::undef):
+    node(n), previous(p), label(l) {}
+
+  void print(vector<Gen> &paths, VALUE a, int levels, bool epsilons, SFST::Transducer *t) {
+    if (previous != SFST::undef) {
+      paths[previous].print(paths, a, levels, epsilons, t);
+
+      SFST::Label l = label;
+
+      VALUE lower, upper;
+
+      SFST::Character lc = l.lower_char();
+      if ((levels == BOTH || levels == LOWER) && (epsilons || lc != SFST::Label::epsilon)) {
+        lower = _alphabet_to_rb_str(&(t->alphabet), lc);
+      } else
+        lower = Qnil;
+
+      SFST::Character uc = l.upper_char();
+      if ((levels == BOTH || levels == UPPER) && (epsilons || uc != SFST::Label::epsilon)) {
+        upper = _alphabet_to_rb_str(&(t->alphabet), uc);
+      } else
+        upper = Qnil;
+
+      switch (levels) {
+        case BOTH:
+          rb_ary_push_pair(a, lower, upper);
+          break;
+
+        case UPPER:
+          rb_ary_push(a, upper);
+          break;
+
+        case LOWER:
+          rb_ary_push(a, lower);
+          break;
+      }
+    }
   }
+};
 
-  for (size_t i = 0; i < arc.size(); i++) {
-    SFST::Label l = arc[i]->label();
-    VALUE lower, upper;
+static void _generate(SFST::Transducer *t, int levels, bool epsilons)
+{
+  vector<Gen> paths;
+  paths.push_back(Gen(t->root_node()));
 
-    SFST::Character lc = l.lower_char();
-    if ((mode == BOTH || mode == LOWER) && (epsilons || lc != SFST::Label::epsilon)) {
-      lower = _alphabet_to_rb_str(&(t->alphabet), lc);
-    } else
-      lower = Qnil;
+  for (size_t i = 0; i < paths.size(); i++) {
+    Gen &gen = paths[i];
+    SFST::Node *node = gen.node;
 
-    SFST::Character uc = l.upper_char();
-    if ((mode == BOTH || mode == UPPER) && (epsilons || uc != SFST::Label::epsilon)) {
-      upper = _alphabet_to_rb_str(&(t->alphabet), uc);
-    } else
-      upper = Qnil;
-
-    switch (mode) {
-      case BOTH:
-        rb_ary_push_pair(a, lower, upper);
-        break;
-
-      case UPPER:
-        rb_ary_push(a, upper);
-        break;
-
-      case LOWER:
-        rb_ary_push(a, lower);
-        break;
+    if (node->is_final()) {
+      VALUE a = rb_ary_new();
+      gen.print(paths, a, levels, epsilons, t);
+      rb_yield(a);
     }
 
-    _regular_transducer_generate(t, arc[i]->target_node(), visitations, a, mode, epsilons);
-
-    rb_ary_pop(a);
+    for (SFST::ArcsIter p(node->arcs()); p; p++) {
+      SFST::Arc *arc = p;
+      paths.push_back(Gen(arc->target_node(), arc->label(), (SFST::Index)i));
+    }
   }
 }
 
@@ -246,8 +257,8 @@ static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, 
   if (!rb_block_given_p())
     rb_raise(rb_eRuntimeError, "block expected");
 
-  SFST::Node2Int visitations;
   SFST::Transducer *a2;
+
   switch (levels) {
     case UPPER:
       a2 = &(t->upper_level().minimise());
@@ -259,8 +270,8 @@ static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, 
       a2 = t;
       break;
   }
-  _regular_transducer_generate(a2, a2->root_node(), visitations, rb_ary_new(),
-      levels, epsilons);
+
+  _generate(a2, levels, epsilons);
 
   return Qnil;
 }

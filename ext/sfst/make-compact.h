@@ -18,8 +18,8 @@ namespace SFST {
   class MakeCompactTransducer : CompactTransducer {
     
   private:
-    void count_arcs(Node *node, NodeNumbering &index, VType vmark);
-    void store_arcs(Node *node, NodeNumbering &index, VType vmark);
+    void count_arcs(Node *node, VType vmark);
+    void store_arcs(Node *node, VType vmark);
     void store_finalp( FILE *file );
     void store_first_arcs( FILE *file );
     void store_target_nodes( FILE *file );

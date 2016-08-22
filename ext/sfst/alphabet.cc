@@ -16,6 +16,9 @@
 #include "utf8.h"
 #include "alphabet.h"
 
+#include <map>
+using std::map;
+
 namespace SFST {
 
   using std::vector;
@@ -24,6 +27,7 @@ namespace SFST {
   const int BUFFER_SIZE=100000;
 
   char EpsilonString[]="<>";
+
 
 
   /*******************************************************************/
@@ -76,6 +80,21 @@ namespace SFST {
     for( i=0; i<n; i++ )
       free(s[i]);
     delete[] s;
+  }
+
+
+  /*******************************************************************/
+  /*                                                                 */
+  /*  Alphabet::print                                                */
+  /*                                                                 */
+  /*******************************************************************/
+
+  void Alphabet::print(void)
+
+  {
+    for( CharMap::iterator it=cm.begin(); it!=cm.end(); it++ )
+      fprintf(stderr, "%i\t%s\n", it->first, it->second);
+    return;
   }
 
 
@@ -356,8 +375,10 @@ namespace SFST {
   void Alphabet::copy( const Alphabet &a )
 
   {
-    insert_symbols( a );
     utf8 = a.utf8;
+    sm.resize(a.sm.size());
+    cm.resize(a.sm.size());
+    insert_symbols( a );
     for( LabelSet::const_iterator it=a.begin(); it!=a.end(); it++ )
       ls.insert( *it );
   }
@@ -377,9 +398,9 @@ namespace SFST {
     insert_symbols(ua);
     utf8 = la.utf8;
 
-    hash_map<Character, hash_set<Character> > cs;
+    map<Character, set<Character> > cs;
 
-    // create a hash table for a quick lookup of the target characters
+    // create a table for a quick lookup of the target characters
     for( iterator it=ua.begin(); it!=ua.end(); it++ ) {
       Character lc=it->lower_char();
       if (lc == Label::epsilon)
@@ -394,9 +415,9 @@ namespace SFST {
 	insert(*it);
       else {
 	if (cs.find(uc) != cs.end()) {
-	  hash_set<Character> s=cs[uc];
+	  set<Character> s=cs[uc];
 	  Character lc=it->lower_char();
-	  for( hash_set<Character>::iterator it=s.begin(); it!=s.end(); it++)
+	  for( set<Character>::iterator it=s.begin(); it!=s.end(); it++)
 	    insert(Label(lc, *it));
 	}
       }

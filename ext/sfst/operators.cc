@@ -16,7 +16,139 @@ using std::cerr;
 
 namespace SFST {
 
-  static void compose_nodes( Node*, Node*, Node*, Transducer*, PairMapping& );
+  typedef map<Character, vector<Arc*> > Sym2Arcs;
+
+  // special data structures for the optimization of composition
+  // All transitions outgoing from the same node and having the same
+  // symbol on the upper (or lower) layer are stored in a hash table
+  // for quick retrieval
+
+  /*****************  class FromTo  *********************************/
+
+  class FromTo {
+  public:
+    Index from, to;  // start and end of a range of transitions
+    Index size() { return to - from; }
+  };
+
+  /*****************  class NodeSym  ********************************/
+
+  class NodeSym {
+    // pair consisting of a node and a symbol
+  public:
+    Index nodeID;
+    Character symbol;
+    NodeSym( Index n, Character s )  { nodeID = n; symbol = s; }
+  };
+
+
+  /*****************  class CharNode2Trans  **************************/
+
+  class CharNode2Trans {
+    
+    struct hashf {
+      size_t operator()(const NodeSym &ns) const { 
+	return ns.nodeID ^ ns.symbol;
+      }
+    };
+    
+    struct equalf {
+      int operator()(const NodeSym &ns1, const NodeSym &ns2) const {
+	return (ns1.nodeID == ns2.nodeID && ns1.symbol == ns2.symbol);
+      }
+    };
+    
+    typedef hash_map<NodeSym, FromTo, hashf, equalf > NodeSym2Range;
+
+    // data structure for storing an index from node + symbol to a list 
+    // of transitions with that symbol on the upper/lower layer
+    Transducer &transducer;
+    vector<Index> node_size;
+    vector<Arc*> cs_transitions; // transitions for a certain character + state
+    NodeSym2Range trange;
+
+  public:
+   
+    CharNode2Trans(Transducer &t);
+    size_t hash_transitions( Node *node, bool upper );
+
+    class iterator {
+      CharNode2Trans &c2t;
+      Index current, end;
+    public:
+      iterator( CharNode2Trans &table, Index nodeID, Character symbol ) 
+	: c2t(table)
+      {
+	FromTo range=c2t.trange[NodeSym(nodeID, symbol)];
+	current = range.from;
+	end = range.to;
+      }
+      void operator++( int ) { current++; }
+      Arc *operator*() { return c2t.cs_transitions[current]; }
+      bool finished() { return current == end; }
+      Index size() { return end-current; };
+    };
+  };
+  
+
+  static void compose_nodes( Node*, Node*, Node*, Transducer*, PairMapping&,
+			     CharNode2Trans&, CharNode2Trans& );
+
+  
+  /*******************************************************************/
+  /*                                                                 */
+  /*  CharNode2Trans::CharNode2Trans                                 */
+  /*                                                                 */
+  /*******************************************************************/
+  
+  CharNode2Trans::CharNode2Trans(Transducer &t): transducer(t)
+
+  {
+    pair<Index,Index> p = transducer.nodeindexing();
+    Index node_count = p.first;
+    Index transition_count = p.second;
+    node_size.resize(node_count, undef);
+    cs_transitions.reserve(transition_count);
+  }
+  
+  
+  /*******************************************************************/
+  /*                                                                 */
+  /*  CharNode2Trans::hash_transitions                               */
+  /*                                                                 */
+  /*******************************************************************/
+  
+  size_t CharNode2Trans::hash_transitions( Node *node, bool upper )
+
+  {
+    size_t n = node_size[node->index];
+    if (n != undef)
+      return n;
+    
+    Sym2Arcs sym2arcs;
+
+    for( ArcsIter p(node->arcs()); p; p++ ) {
+      Arc *arc=p;
+      if (upper)
+	sym2arcs[arc->label().upper_char()].push_back(arc);
+      else
+	sym2arcs[arc->label().lower_char()].push_back(arc);
+    }
+
+    for( Sym2Arcs::iterator it=sym2arcs.begin(); it!=sym2arcs.end(); it++ ) {
+      Character sym = it->first;
+      vector<Arc*> &arc = it->second;
+      FromTo range;
+      range.from = (Index)cs_transitions.size();
+      for( size_t i=0; i<arc.size(); i++ )
+	cs_transitions.push_back( arc[i] );
+      range.to = (Index)cs_transitions.size();
+      trange[NodeSym(node->index, sym)] = range;
+    }
+    n = sym2arcs.size();
+    node_size[node->index] = (Index)n;
+    return n;
+  }
 
 
   /*******************************************************************/
@@ -245,11 +377,12 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer &Transducer::reverse()
+  Transducer &Transducer::reverse( bool copy_alphabet )
 
   {
     Transducer *na = new Transducer();
-    na->alphabet.copy(alphabet);
+    if (copy_alphabet)
+      na->alphabet.copy(alphabet);
 
     incr_vmark();
     reverse_node(root_node(), na);
@@ -621,14 +754,19 @@ namespace SFST {
 
   /*******************************************************************/
   /*                                                                 */
-  /*  add_composed_node                                              */
+  /*  add_transition                                                 */
   /*                                                                 */
   /*******************************************************************/
 
-  static void add_composed_node( Label l, Node *n1, Node *n2, Node *node, 
-				 Transducer *a, PairMapping &map )
+  static void add_transition( Label l, Node *n1, Node *n2, Node *node, 
+			      Transducer *a, PairMapping &map, 
+			      CharNode2Trans &cn2trans1, 
+			      CharNode2Trans &cn2trans2 )
   
   {
+    // fprintf(stderr,"transition from %u to %u with label %s\n",
+    // 	    n1->index, n2->index, a->alphabet.write_label(l));
+
     // Check whether this node pair has been encountered before
     PairMapping::iterator it=map.find(n1, n2);
   
@@ -648,7 +786,7 @@ namespace SFST {
     node->add_arc( l, target_node, a );
   
     // recursion
-    compose_nodes( n1, n2, target_node, a, map );
+    compose_nodes( n1, n2, target_node, a, map, cn2trans1, cn2trans2 );
   }
 
 
@@ -658,47 +796,104 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  static void compose_nodes( Node *n1, Node *n2, Node *node, 
-			     Transducer *a, PairMapping &map )
+  static void compose_nodes( Node *n1, Node *n2, Node *node, Transducer *a, 
+			     PairMapping &map, CharNode2Trans &cn2trans1,
+			     CharNode2Trans &cn2trans2 )
   {
+    // fprintf(stderr,"A%u || B%u\n",n1->index,n2->index);
+    
+    // index upper character of first transducer
+    size_t size1 = cn2trans1.hash_transitions( n1, true );
+    // index lower character of second transducer
+    size_t size2 = cn2trans2.hash_transitions( n2, false );
+
+    // use the hashing of the transducer whose node is larger
+    bool hash2 = (size1 <= size2);
+
     // if both input nodes are final, so is the new one
     if (n1->is_final() && n2->is_final())
       node->set_final(1);
 
-    // iterate over all outgoing arcs of the first node
-    for( ArcsIter i(n1->arcs()); i; i++ ) {
-      Arc *arc1=i;
-      Node *t1 = arc1->target_node();
-      Label l1=arc1->label();
-      Character uc1=l1.upper_char();
-      Character lc1=l1.lower_char();
+    if (hash2) {
+      // iterate over all outgoing arcs of the first node
+      for( ArcsIter i(n1->arcs()); i; i++ ) {
+	Arc *arc1=i;
+	Node *t1 = arc1->target_node();
+	Label l1=arc1->label();
+	Character uc1=l1.upper_char();
+	Character lc1=l1.lower_char();
 
-      if (uc1 == Label::epsilon)
-	add_composed_node( l1, t1, n2, node, a, map );
-
-      else {
-	for( ArcsIter k(n2->arcs()); k; k++ ) {
-	  Arc *arc2=k;
-	  Node *t2 = arc2->target_node();
-	  Label l2=arc2->label();
-	  Character lc2=l2.lower_char();
-	  Character uc2=l2.upper_char();
+	if (uc1 == Label::epsilon)
+	  add_transition( l1, t1, n2, node, a, map, cn2trans1, cn2trans2 );
 	
-	  if (uc1 == lc2)
-	    add_composed_node( Label(lc1,uc2), t1, t2, node, a, map );
+	else {
+	  // iterate over the matching outgoing arcs of the second node
+	  for( CharNode2Trans::iterator it(cn2trans2, n2->index, uc1 );
+	       !it.finished(); it++ )
+	    {
+	      Arc *arc2 = *it;
+	      Node *t2 = arc2->target_node();
+	      Label l2=arc2->label();
+	      assert(uc1 == l2.lower_char());
+	      Character uc2=l2.upper_char();
+	    
+	      add_transition( Label(lc1,uc2), t1, t2, node, a, map, 
+			      cn2trans1, cn2trans2 );
+	  }
 	}
       }
+
+      // epsilon input characters of the second Transducer
+      for( CharNode2Trans::iterator it(cn2trans2, n2->index, Label::epsilon );
+	   !it.finished(); it++ )
+	{
+	  Arc *arc2 = *it;
+	  Node *t2 = arc2->target_node();
+	  Label l=arc2->label();
+	  assert(l.lower_char() == Label::epsilon);
+	  add_transition( l, n1, t2, node, a, map, cn2trans1, cn2trans2 );
+	}
     }
 
-    // epsilon input characters of the second Transducer
-    for( ArcsIter i(n2->arcs()); i; i++ ) {
-      Arc *arc=i;
-      Node *t = arc->target_node();
-      Label l=arc->label();
-      Character lc=l.lower_char();
+    else { /* !hash2 */ 
+      // iterate over all outgoing arcs of the second node
+      for( ArcsIter i(n2->arcs()); i; i++ ) {
+	Arc *arc2=i;
+	Node *t2 = arc2->target_node();
+	Label l2=arc2->label();
+	Character uc2=l2.upper_char();
+	Character lc2=l2.lower_char();
+
+	if (lc2 == Label::epsilon)
+	  add_transition( l2, n1, t2, node, a, map, cn2trans1, cn2trans2 );
 	
-      if (lc == Label::epsilon)
-	add_composed_node( l, n1, t, node, a, map );
+	else {
+	  // iterate over the matching outgoing arcs of the first node
+	  for( CharNode2Trans::iterator it(cn2trans1, n1->index, lc2 );
+	       !it.finished(); it++ )
+	    {
+	      Arc *arc1 = *it;
+	      Node *t1 = arc1->target_node();
+	      Label l1=arc1->label();
+	      assert(l1.upper_char() == lc2);
+	      Character lc1=l1.lower_char();
+	    
+	      add_transition( Label(lc1,uc2), t1, t2, node, a, map, 
+			      cn2trans1, cn2trans2 );
+	  }
+	}
+      }
+
+      // epsilon output characters of the first Transducer
+      for( CharNode2Trans::iterator it(cn2trans1, n1->index, Label::epsilon );
+	   !it.finished(); it++ )
+	{
+	  Arc *arc1 = *it;
+	  Node *t1 = arc1->target_node();
+	  Label l=arc1->label();
+	  assert(l.upper_char() == Label::epsilon);
+	  add_transition( l, t1, n2, node, a, map, cn2trans1, cn2trans2 );
+	}
     }
   }
 
@@ -713,7 +908,7 @@ namespace SFST {
 
   {
     PairMapping map;
-
+    
     Transducer *na = new Transducer();
     na->alphabet.compose(alphabet, a.alphabet);
 
@@ -721,7 +916,10 @@ namespace SFST {
     map[pair<Node*,Node*>(root_node(), a.root_node())] = na->root_node();
 
     // recursively compose the two automata
-    compose_nodes( root_node(), a.root_node(), na->root_node(), na, map );
+    CharNode2Trans cn2trans1(*this);
+    CharNode2Trans cn2trans2(a);
+    compose_nodes( root_node(), a.root_node(), na->root_node(), 
+		   na, map, cn2trans1, cn2trans2 );
 
     return *na;
   }
