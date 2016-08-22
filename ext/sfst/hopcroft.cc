@@ -10,8 +10,6 @@
 
 #include "fst.h"
 
-// #define TEST1
-
 // HFST
 namespace SFST
 {
@@ -125,7 +123,7 @@ namespace SFST
   /*************  class Minimiser  *********************************/
 
   // table which maps labels to sets of source states
-  typedef map<Label,set<size_t> > Label2SState;
+  typedef map<Label,vector<size_t> > Label2SState;
 
   class Minimiser {
 
@@ -157,8 +155,8 @@ namespace SFST
     void compute_source_states( Label2SState&, PosRange ); // computes for each
     // label l the set of source states with an "l" transition to a state
     // in the current split state set
-    void split( size_t B, vector<size_t> &T1, size_t C ); // splits a state set 
-    // by the state set given in "T1". 
+    void split( size_t B, vector<size_t> &T, size_t C ); // splits a state set 
+    // by the state set given in "T". 
   };
  
 
@@ -224,11 +222,11 @@ namespace SFST
     for( size_t i=r.from; i<r.to; i++ ) {
       size_t s = partition[i];
 
-      // for all transition into state B
+      // for all transitions into state B
+      
       for( size_t k=transtab.startpos[s]; k<transtab.startpos[s+1]; k++ ) {
 	Transition &t = transtab.transition[k];
-	// most expensive code line follows here !!!
-	l2ss[t.label].insert(t.source);
+	l2ss[t.label].push_back(t.source);
       }
     }
   }
@@ -240,33 +238,29 @@ namespace SFST
   /*                                                                 */
   /*******************************************************************/
 
-  void Minimiser::split( size_t B, vector<size_t> &T1, size_t C )
+  void Minimiser::split( size_t B, vector<size_t> &T, size_t C )
 
   {
-    // splits a state set by intersection with the state set "T1"
+    // most expensive function !!!
+    // splits a state set by intersection with the state set "T"
 
     // get the position range of the states in the "partition" table
     PosRange r = posrange[B];
     if (r.size() == 1)
       return;
 
-    vector<size_t> B1_set, B2_set;
-
-#ifdef TEST
-    fprintf(stderr,"\nsplit %lu with", B);
-    for( size_t i=0; i<T1.size(); i++ )
-      fprintf(stderr," %lu", T1[i]);
-    fputc('\n', stderr);
-#endif
-
     // compute the intersection and the difference of the two sets
+    vector<size_t> B1_set, B2_set;
+    size_t l=r.to-r.from;
+    B1_set.reserve(l);
+    B2_set.reserve(l);
     size_t k=0;
     size_t i=r.from;
     while (i < r.to) {
-      if (k == T1.size() || partition[i] < T1[k])
+      if (k == T.size() || partition[i] < T[k])
 	// state is not in the intersection
 	B2_set.push_back(partition[i++]);
-      else if (partition[i] == T1[k]) {
+      else if (partition[i] == T[k]) {
 	// state is in the intersection
 	B1_set.push_back(partition[i++]);
 	k++;
@@ -274,16 +268,6 @@ namespace SFST
       else
 	k++;
     }
-#ifdef TEST
-    fprintf(stderr,"B1 = ");
-    for( size_t i=0; i<B1_set.size(); i++ )
-      fprintf(stderr," %lu", B1_set[i]);
-    fputc('\n', stderr);
-    fprintf(stderr,"B2 = ");
-    for( size_t i=0; i<B2_set.size(); i++ )
-      fprintf(stderr," %lu", B2_set[i]);
-    fputc('\n', stderr);
-#endif
 
     if (B2_set.size() == 0)
       return;
@@ -316,11 +300,7 @@ namespace SFST
       stack.push( new_B );
     else
       stack.push( B );
-    
-#ifdef TEST
-    fprintf(stderr,"\nnew partition:\n");
-    print_partition( stderr );
-#endif
+
     return;
   }
 
@@ -354,12 +334,6 @@ namespace SFST
     else 
       stack.push( 0 );
 
-
-#ifdef TEST
-    fprintf(stderr,"\nPartition:\n");
-    print_partition( stderr );
-#endif
-
     // repeat until the stack is empty
     while (!stack.is_empty()) {
       size_t C = stack.pop();  // next state set on which the others are split
@@ -369,23 +343,18 @@ namespace SFST
       Label2SState l2ss;
       compute_source_states( l2ss, posrange[C] );
 
-      // loop over the labels
-      for( Label2SState::iterator it=l2ss.begin(); it!= l2ss.end(); it++ ) {
-	set<size_t> &X = it->second;
-	
-	// copy the set of source states to a sorted vector
-	vector<size_t> T1;
-	T1.reserve(X.size());
-	for( set<size_t>::iterator it=X.begin(); it!=X.end(); it++ )
-	  T1.push_back(*it);
+      // loop over the labels of the incoming transitions
+      for( Label2SState::iterator it=l2ss.begin(); it!=l2ss.end(); it++ ) {
+	vector<size_t> &T = it->second;
+	std::sort( T.begin(), T.end() );
 	
 	// find the relevant source state sets
 	map<size_t,size_t> source_set_counts;
-	for( size_t i=0; i<T1.size(); i++ ) {
-	  size_t ss = state2set[T1[i]];
-	  map<size_t,size_t>::iterator it = source_set_counts.find( ss );
+	for( size_t i=0; i<T.size(); i++ ) {
+	  size_t setID = state2set[T[i]];
+	  map<size_t,size_t>::iterator it = source_set_counts.find( setID );
 	  if (it == source_set_counts.end())
-	    source_set_counts[ ss ] = 1;
+	    source_set_counts[ setID ] = 1;
 	  else
 	    it->second++;
 	}
@@ -396,17 +365,12 @@ namespace SFST
 	  {
 	    size_t B = it->first;
 	    // do not try to split sets with just 1 element
-	    //if (posrange[B].to - posrange[B].from < it->second)
+	    // if (posrange[B].to - posrange[B].from <= it->second)
 	    if (posrange[B].to - posrange[B].from > it->second)
-	      split( B, T1, C );
+	      split( B, T, C );
 	  }
       }
     }
-    
-#ifdef TEST
-    fprintf(stderr,"\nPartition:\n");
-    print_partition( stderr );
-#endif
 
     return *new Transducer( transducer, state2set, transtab.nodenumbering, 
 			    posrange.size() );

@@ -23,7 +23,7 @@ namespace SFST {
 
   typedef enum {twol_left,twol_right,twol_both} Twol_Type;
   
-  typedef enum {repl_left,repl_right,repl_up,repl_down,repl_down2} Repl_Type;
+  typedef enum {repl_left,repl_right,repl_up,my_repl_down,repl_down} Repl_Type;
   
   typedef struct range_t {
     Character character;

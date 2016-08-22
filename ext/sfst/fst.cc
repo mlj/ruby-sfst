@@ -936,7 +936,7 @@ namespace SFST {
     if ((long)node.size() <= n)
       node.resize(n+1, NULL);
     if (node[n] == NULL)
-      node[n] = new Node;
+      node[n] = new_node(); //new Node;
 
     return node[n];
   }

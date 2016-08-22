@@ -1504,7 +1504,7 @@ namespace SFST {
 
   {
     Transducer *t1;
-    if (type == repl_down2)
+    if (type == my_repl_down)
       t1 = &t->upper_level();
     else
       t1 = &t->lower_level();
@@ -1536,7 +1536,7 @@ namespace SFST {
     if (type == repl_up)
       // _ct
       tmp = &ct->lower_level();
-    else if (type == repl_down2)
+    else if (type == my_repl_down)
       // ^ct
       tmp = &ct->upper_level();
     else
@@ -1682,10 +1682,11 @@ namespace SFST {
     /////////////////////////////////////////////////////////////
 
     Transducer *rt;
-    if (type == repl_up || type == repl_right || type == repl_left)
+    if (type == repl_up || type == repl_right || 
+	type == repl_left || type == repl_down)
       rt = replace_transducer( t, leftm, rightm, repl_up );
     else
-      rt = replace_transducer( t, leftm, rightm, repl_down2 );
+      rt = replace_transducer( t, leftm, rightm, my_repl_down );
 
     /////////////////////////////////////////////////////////////
     // build the conditional replacement transducer
@@ -1721,13 +1722,13 @@ namespace SFST {
     delete rt;
     tmp = t2;
     
-    if (type == repl_down2 || type == repl_right) {
+    if (type == my_repl_down || type == repl_right || type == repl_down) {
       t2 = &(*tmp || *lct);
       delete tmp;
       delete lct;
       tmp = t2;
     }
-    if (type == repl_down2 || type == repl_left) {
+    if (type == my_repl_down || type == repl_left || type == repl_down) {
       t2 = &(*tmp || *rct);
       delete tmp;
       delete rct;

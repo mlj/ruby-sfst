@@ -144,10 +144,10 @@ namespace SFST {
   class Node {
 
   private:
-    bool final;
-    VType visited;
     Arcs arcsp;
     Node *forwardp;
+    VType visited;
+    bool final;
 
   public:
     Node( void ) { init(); };
