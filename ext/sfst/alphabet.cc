@@ -427,8 +427,8 @@ namespace SFST {
   /*  Alphabet::next_mcsym                                           */
   /*                                                                 */
   /*  recognizes multi-character symbols which are enclosed with     */
-  /*  angle brackets <...>. If the argument flag insert is true,     */
-  /*  the multi-character symbol must be already in the lexicon in   */
+  /*  angle brackets <...>. If the argument flag insert is false,    */
+  /*  the multi-character symbol must already be in the lexicon in   */
   /*  order to be recognized.                                        */
   /*                                                                 */
   /*******************************************************************/
@@ -529,7 +529,7 @@ namespace SFST {
 
     // read second character
     string++; // jump over ':'
-    c = next_code( string );
+    c = next_code( string, extended );
     if (c == EOF) {
       static char buffer[1000];
       sprintf(buffer,"Error: incomplete symbol in input file: %s", string);
@@ -553,7 +553,7 @@ namespace SFST {
 
   {
     int c;
-    while ((c = next_code(s, false)) != EOF)
+    while ((c = next_code(s, false, false)) != EOF)
       ch.push_back((Character)c);
   }
 
