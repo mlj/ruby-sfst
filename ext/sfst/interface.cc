@@ -1500,13 +1500,20 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer *Interface::make_optional( Transducer *t )
+  Transducer *Interface::make_optional( Transducer *t, Repl_Type type )
 
   {
-    Transducer *t1 = pi_machine(TheAlphabet);
+    Transducer *t1;
+    if (type == repl_down2)
+      t1 = &t->upper_level();
+    else
+      t1 = &t->lower_level();
+
     Transducer *t2 = &(*t | *t1);
+
     delete t;
     delete t1;
+
     return t2;
   }
 
@@ -1520,13 +1527,16 @@ namespace SFST {
   Transducer *Interface::replace( Transducer *ct, Repl_Type type, 
 				  bool optional )
   {
+    if (optional)
+      ct = make_optional(ct, type);
+
     // compute the no-center transducer
     Transducer *tmp=NULL;
 
     if (type == repl_up)
       // _ct
       tmp = &ct->lower_level();
-    else if (type == repl_down)
+    else if (type == repl_down2)
       // ^ct
       tmp = &ct->upper_level();
     else
@@ -1560,9 +1570,6 @@ namespace SFST {
     tmp = &(*t2 + *no_ct);
     delete t2;
     delete no_ct;
-
-    if (optional)
-      tmp = make_optional(tmp);
 
     return tmp;
   }
@@ -1612,6 +1619,9 @@ namespace SFST {
   Transducer *Interface::replace_in_context( Transducer *t, Repl_Type type, 
 					     Contexts *c, bool optional )
   {
+    if (optional)
+      t = make_optional(t, type);
+
     // The implementation of the replace operators is based on
     // "The Replace Operator" by Lauri Karttunen
 
@@ -1675,7 +1685,7 @@ namespace SFST {
     if (type == repl_up || type == repl_right || type == repl_left)
       rt = replace_transducer( t, leftm, rightm, repl_up );
     else
-      rt = replace_transducer( t, leftm, rightm, repl_down );
+      rt = replace_transducer( t, leftm, rightm, repl_down2 );
 
     /////////////////////////////////////////////////////////////
     // build the conditional replacement transducer
@@ -1711,13 +1721,13 @@ namespace SFST {
     delete rt;
     tmp = t2;
     
-    if (type == repl_down || type == repl_right) {
+    if (type == repl_down2 || type == repl_right) {
       t2 = &(*tmp || *lct);
       delete tmp;
       delete lct;
       tmp = t2;
     }
-    if (type == repl_down || type == repl_left) {
+    if (type == repl_down2 || type == repl_left) {
       t2 = &(*tmp || *rct);
       delete tmp;
       delete rct;
@@ -1730,9 +1740,6 @@ namespace SFST {
 
     // Remove the markers from the alphabet
     TheAlphabet.delete_markers();
-
-    if (optional)
-      t2 = make_optional(t2);
 
     free_contexts( c );
 

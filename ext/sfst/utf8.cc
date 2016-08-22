@@ -5,12 +5,11 @@
 /*   Author: Helmut Schmid                                         */
 /*  Purpose:                                                       */
 /*  Created: Mon Sep  5 17:49:16 2005                              */
-/* Modified: Thu Nov 27 15:24:42 2008 (schmid)                     */
+/* Modified: Wed Sep 29 15:08:34 2010 (schmid)                     */
 /*                                                                 */
 /*******************************************************************/
 
 #include "string.h"
-
 #include "utf8.h"
 
 namespace SFST {

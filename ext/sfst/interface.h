@@ -23,7 +23,7 @@ namespace SFST {
 
   typedef enum {twol_left,twol_right,twol_both} Twol_Type;
   
-  typedef enum {repl_left,repl_right,repl_up,repl_down} Repl_Type;
+  typedef enum {repl_left,repl_right,repl_up,repl_down,repl_down2} Repl_Type;
   
   typedef struct range_t {
     Character character;
@@ -83,7 +83,7 @@ namespace SFST {
     Transducer *extended_left_transducer( Transducer *t, 
 					  Character m1, Character m2 );
     Transducer *left_context( Transducer *t, Character m1, Character m2 );
-    Transducer *make_optional( Transducer *t );
+    Transducer *make_optional( Transducer *t, Repl_Type type );
     Transducer *replace_transducer( Transducer *ct, Character lm, 
 				    Character rm, Repl_Type type );
 
