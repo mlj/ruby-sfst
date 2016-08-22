@@ -14,19 +14,19 @@ VALUE mSFST = Qnil;
 VALUE mCompactTransducer = Qnil;
 VALUE mRegularTransducer = Qnil;
 
-static void compact_transducer_free(CompactTransducer *t)
+static void compact_transducer_free(SFST::CompactTransducer *t)
 {
   if (t)
     delete t;
 }
 
-static void compact_transducer_mark(CompactTransducer *t)
+static void compact_transducer_mark(SFST::CompactTransducer *t)
 {
 }
 
 static VALUE compact_transducer_alloc(VALUE klass)
 {
-  CompactTransducer *t = NULL;
+  SFST::CompactTransducer *t = NULL;
 
   return Data_Wrap_Struct(klass, compact_transducer_mark, compact_transducer_free, t);
 }
@@ -34,7 +34,7 @@ static VALUE compact_transducer_alloc(VALUE klass)
 static VALUE compact_transducer_init(VALUE obj, VALUE filename)
 {
   FILE *file;
-  CompactTransducer *t;
+  SFST::CompactTransducer *t;
 
   file = fopen(RSTRING_PTR(filename), "rb");
 
@@ -43,7 +43,7 @@ static VALUE compact_transducer_init(VALUE obj, VALUE filename)
   }
 
   try {
-    t = new CompactTransducer(file);
+    t = new SFST::CompactTransducer(file);
     fclose(file);
   }
   catch (const char *p) {
@@ -57,13 +57,13 @@ static VALUE compact_transducer_init(VALUE obj, VALUE filename)
 static VALUE compact_transducer_analyze(VALUE self, VALUE string)
 {
   VALUE accepted = Qfalse;
-  CompactTransducer *t;
+  SFST::CompactTransducer *t;
 
   Check_Type(string, T_STRING);
 
-  Data_Get_Struct(self, CompactTransducer, t);
+  Data_Get_Struct(self, SFST::CompactTransducer, t);
 
-  std::vector<CAnalysis> analyses;
+  std::vector<SFST::CAnalysis> analyses;
   t->analyze_string(RSTRING_PTR(string), analyses);
 
   for (size_t k = 0; k < analyses.size(); k++) {
@@ -79,19 +79,19 @@ static VALUE compact_transducer_analyze(VALUE self, VALUE string)
   return accepted;
 }
 
-static void regular_transducer_free(Transducer *t)
+static void regular_transducer_free(SFST::Transducer *t)
 {
   if (t)
     delete t;
 }
 
-static void regular_transducer_mark(Transducer *t)
+static void regular_transducer_mark(SFST::Transducer *t)
 {
 }
 
 static VALUE regular_transducer_alloc(VALUE klass)
 {
-  Transducer *t = NULL;
+  SFST::Transducer *t = NULL;
 
   return Data_Wrap_Struct(klass, regular_transducer_mark, regular_transducer_free, t);
 }
@@ -99,7 +99,7 @@ static VALUE regular_transducer_alloc(VALUE klass)
 static VALUE regular_transducer_init(VALUE obj, VALUE filename)
 {
   FILE *file;
-  Transducer *t;
+  SFST::Transducer *t;
 
   file = fopen(RSTRING_PTR(filename), "rb");
 
@@ -108,7 +108,7 @@ static VALUE regular_transducer_init(VALUE obj, VALUE filename)
   }
 
   try {
-    t = new Transducer(file);
+    t = new SFST::Transducer(file);
     fclose(file);
   }
   catch (const char *p) {
@@ -123,7 +123,7 @@ using std::vector;
 
 enum { BOTH, LOWER, UPPER };
 
-static VALUE _alphabet_to_rb_str(Alphabet *a, Character c)
+static VALUE _alphabet_to_rb_str(SFST::Alphabet *a, SFST::Character c)
 {
   const char *s = a->code2symbol(c);
 
@@ -151,18 +151,18 @@ static VALUE rb_ary_push_pair(VALUE ary, VALUE a, VALUE b)
   return ary;
 }
 
-static void _regular_transducer_generate(Transducer *t, Node *node,
-    Node2Int &visitations, VALUE a, int mode, bool epsilons)
+static void _regular_transducer_generate(SFST::Transducer *t, SFST::Node *node,
+    SFST::Node2Int &visitations, VALUE a, int mode, bool epsilons)
 {
   if (node->is_final())
     rb_yield(a);
 
   visitations[node]++;
 
-  vector<Arc*> arc;
-  for (ArcsIter p(node->arcs()); p; p++) {
-    Arc *a = p;
-    Node *n = a->target_node();
+  vector<SFST::Arc*> arc;
+  for (SFST::ArcsIter p(node->arcs()); p; p++) {
+    SFST::Arc *a = p;
+    SFST::Node *n = a->target_node();
     size_t i;
     for (i = 0; i < arc.size(); i++)
       if (visitations[n] < visitations[arc[i]->target_node()])
@@ -174,17 +174,17 @@ static void _regular_transducer_generate(Transducer *t, Node *node,
   }
 
   for (size_t i = 0; i < arc.size(); i++) {
-    Label l = arc[i]->label();
+    SFST::Label l = arc[i]->label();
     VALUE lower, upper;
 
-    Character lc = l.lower_char();
-    if ((mode == BOTH || mode == LOWER) && (epsilons || lc != Label::epsilon)) {
+    SFST::Character lc = l.lower_char();
+    if ((mode == BOTH || mode == LOWER) && (epsilons || lc != SFST::Label::epsilon)) {
       lower = _alphabet_to_rb_str(&(t->alphabet), lc);
     } else
       lower = Qnil;
 
-    Character uc = l.upper_char();
-    if ((mode == BOTH || mode == UPPER) && (epsilons || uc != Label::epsilon)) {
+    SFST::Character uc = l.upper_char();
+    if ((mode == BOTH || mode == UPPER) && (epsilons || uc != SFST::Label::epsilon)) {
       upper = _alphabet_to_rb_str(&(t->alphabet), uc);
     } else
       upper = Qnil;
@@ -211,8 +211,8 @@ static void _regular_transducer_generate(Transducer *t, Node *node,
 
 static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, VALUE mode_arg)
 {
-  Transducer *t;
-  Data_Get_Struct(self, Transducer, t);
+  SFST::Transducer *t;
+  Data_Get_Struct(self, SFST::Transducer, t);
 
   static ID id_upper = rb_intern("upper");
   static ID id_lower = rb_intern("lower");
@@ -246,8 +246,8 @@ static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, 
   if (!rb_block_given_p())
     rb_raise(rb_eRuntimeError, "block expected");
 
-  Node2Int visitations;
-  Transducer *a2;
+  SFST::Node2Int visitations;
+  SFST::Transducer *a2;
   switch (levels) {
     case UPPER:
       a2 = &(t->upper_level().minimise());
@@ -265,7 +265,7 @@ static VALUE regular_transducer_generate_language(VALUE self, VALUE levels_arg, 
   return Qnil;
 }
 
-static bool _regular_transducer_yield(Transducer *t, Node *node, VALUE result_array)
+static bool _regular_transducer_yield(SFST::Transducer *t, SFST::Node *node, VALUE result_array)
 {
   int accepted = 0;
 
@@ -284,9 +284,9 @@ static bool _regular_transducer_yield(Transducer *t, Node *node, VALUE result_ar
     accepted = 1;
   }
 
-  for (ArcsIter i(node->arcs()); i; i++) {
-    Arc *arc = i;
-    Label l = arc->label();
+  for (SFST::ArcsIter i(node->arcs()); i; i++) {
+    SFST::Arc *arc = i;
+    SFST::Label l = arc->label();
 
     rb_ary_push(result_array, rb_str_new2(t->alphabet.write_label(l)));
 
@@ -300,10 +300,10 @@ static bool _regular_transducer_yield(Transducer *t, Node *node, VALUE result_ar
   return accepted == 1 ? true : false;
 }
 
-static VALUE _regular_transducer_analyze_or_generate(Transducer *t, VALUE string, bool generate)
+static VALUE _regular_transducer_analyze_or_generate(SFST::Transducer *t, VALUE string, bool generate)
 {
-  Transducer *a2, *a3;
-  Transducer a1(RSTRING_PTR(string), &(t->alphabet), false);
+  SFST::Transducer *a2, *a3;
+  SFST::Transducer a1(RSTRING_PTR(string), &(t->alphabet), false);
   if (generate) {
     a2 = &(a1 || *t);
     a3 = &(a2->upper_level());
@@ -324,17 +324,17 @@ static VALUE _regular_transducer_analyze_or_generate(Transducer *t, VALUE string
 
 static VALUE regular_transducer_generate(VALUE self, VALUE string)
 {
-  Transducer *t;
+  SFST::Transducer *t;
   Check_Type(string, T_STRING);
-  Data_Get_Struct(self, Transducer, t);
+  Data_Get_Struct(self, SFST::Transducer, t);
   return _regular_transducer_analyze_or_generate(t, string, true);
 }
 
 static VALUE regular_transducer_analyze(VALUE self, VALUE string)
 {
-  Transducer *t;
+  SFST::Transducer *t;
   Check_Type(string, T_STRING);
-  Data_Get_Struct(self, Transducer, t);
+  Data_Get_Struct(self, SFST::Transducer, t);
   return _regular_transducer_analyze_or_generate(t, string, false);
 }
 

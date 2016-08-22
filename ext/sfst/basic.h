@@ -15,10 +15,13 @@
 
 #include <stdio.h>
 
-extern bool Switch_Bytes;
+namespace SFST {
 
-char* fst_strdup(const char* pString);
-int read_string( char *buffer, int size, FILE *file );
-size_t read_num( void *p, size_t size, FILE *file );
+  extern bool Switch_Bytes;
 
+  char* fst_strdup(const char* pString);
+  int read_string( char *buffer, int size, FILE *file );
+  size_t read_num( void *p, size_t size, FILE *file );
+
+}
 #endif
