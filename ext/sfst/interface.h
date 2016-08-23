@@ -41,6 +41,9 @@ namespace SFST {
     struct contexts_t *next;
   } Contexts;
 
+
+  /*****************  class Interface  *******************************/
+
   class Interface {
 
   private:
@@ -92,13 +95,16 @@ namespace SFST {
   public:
     bool Verbose;
     bool Alphabet_Defined;
+    bool LexiconComments;
     Alphabet TheAlphabet;
 
   Interface( bool utf8=false, bool verbose=false ) :
-    Verbose(verbose), Alphabet_Defined(false)
+    Verbose(verbose), Alphabet_Defined(false), LexiconComments(false)
       {
 	TheAlphabet.utf8 = utf8;
       }
+
+    void allow_lexicon_comments() { LexiconComments = true; }
 
     Transducer *new_transducer( Range*, Range* );
     Transducer *read_words( char *filename );

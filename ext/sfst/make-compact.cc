@@ -126,7 +126,7 @@ namespace SFST {
       exit(1);
     }
 
-    unsigned number_of_nodes = (unsigned)a.nodeindexing().first;
+    number_of_nodes = (unsigned)a.nodeindexing().first;
     alphabet.copy(a.alphabet);
 
     // memory allocation

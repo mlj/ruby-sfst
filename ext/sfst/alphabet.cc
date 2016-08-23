@@ -255,7 +255,12 @@ namespace SFST {
   {
     const char *s = code2symbol(c);
 
-    if (s) {
+    // quote colons
+    if (strcmp(s,":") == 0) {
+      buffer[(*pos)++] = '\\';
+      buffer[(*pos)++] = s[0];
+    }
+    else if (s) {
       int i = 0;
       int l=(int)strlen(s)-1;
       if (!with_brackets && s[i] == '<' && s[l] == '>') { i++; l--; }
@@ -512,7 +517,7 @@ namespace SFST {
     if (utf8) {
       unsigned int c = utf8toint( &string );
       if (c == 0) {
-	fprintf(stderr, "Error in UTF-8 encoding!\n");
+	fprintf(stderr, "Error in UTF-8 encoding at: <%s>\n", string);
 	return EOF; // error encountered in utf8 character
       }
       return (int)add_symbol(int2utf8(c));
@@ -753,7 +758,7 @@ namespace SFST {
 	    continue; // don't consider participles as complex
 	  if (!is_verb &&
 	      (strcmp(sym,"<Sup>") == 0 || strcmp(sym,"<Comp>") == 0))
-	    continue; // don't consider participles as complex
+	    continue;
 	}
       }
       score--;
@@ -811,12 +816,8 @@ namespace SFST {
       const char *s;
 
       // either print the analysis symbol or the whole label
-      if (both_layers) {
+      if (both_layers)
 	s = write_label(l);
-	// quote colons
-	if (strcmp(s,":") == 0)
-	  ch.push_back('\\');
-      }
       else if (l.lower_char() != Label::epsilon)
 	s = write_char(l.lower_char());
       else

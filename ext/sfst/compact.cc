@@ -264,7 +264,7 @@ namespace SFST {
 
   {
     size_t N=0;
-    Label Num2Label[alphabet.size()];
+    vector<Label> Num2Label(alphabet.size());
     for( Alphabet::const_iterator it=alphabet.begin();
 	 it != alphabet.end(); it++ )
       {

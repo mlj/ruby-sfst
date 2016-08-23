@@ -14,6 +14,8 @@
 
 #include "alphabet.h"
 
+typedef enum { Joint, UpperOnly, LowerOnly, Both } OutputType;
+
 
 /*******************************************************************/
 /* include commands                                                */
@@ -225,6 +227,9 @@ namespace SFST {
     Node root;
     Mem mem;
 
+    size_t node_count;
+    size_t transition_count;
+
     typedef set<Label, Label::label_cmp> LabelSet;
     typedef hash_map<Character, char*> SymbolMap;
 
@@ -263,7 +268,7 @@ namespace SFST {
     void build_TT( Node *node, vector<Transition> &transtab );
     size_t size_node( Node *node );
 
-    void index_nodes( Node*, size_t&, size_t&, vector<Node*>* );
+    void index_nodes( Node*, vector<Node*>* );
 
   public:
     VType vmark;
@@ -271,18 +276,24 @@ namespace SFST {
 
     bool deterministic;
     bool minimised;
+    bool indexed;
 
     Alphabet alphabet; // The set of all labels, i.e. character pairs
 
-  Transducer( bool empty=false ) : root(), mem()
-      { vmark = 0; deterministic = minimised = empty; };
+  Transducer( bool empty=false ) : root(), mem() { 
+      vmark = 0; 
+      deterministic = minimised = empty; 
+      indexed = false;
+      node_count = transition_count = 0;
+    };
     
     Transducer( Transducer&, vector<size_t>&, size_t );
 
     // convertion of a string to an transducer
     Transducer( char *s, const Alphabet *a=NULL, bool extended=false );
     // reads a word list from a file and stores it in the transducer
-    Transducer( istream&, const Alphabet *a=NULL, bool verbose=false );
+    Transducer( istream&, const Alphabet *a=NULL, bool verbose=false, 
+		bool lexcomments=false );
     // reads a transducer from a binary or text file
     Transducer( FILE*, bool binary=true );
     // turns a sequence of labels into a transducer
@@ -311,7 +322,7 @@ namespace SFST {
 
     bool analyze_string( char *s, FILE *file, bool with_brackets=true );
     bool generate_string( char *s, FILE *file, bool with_brackets=true );
-    void generate( FILE *file, int max=-1 );
+    void generate( FILE *file, int max=-1, OutputType ot=Joint );
 
     void clear( void );      // clears the transducer. The resulting transducer
     // is like one created with Transducer()

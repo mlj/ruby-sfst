@@ -235,6 +235,7 @@ namespace SFST
     Transducer *a2 = &a1->reverse( false );
     delete a1;
     a1 = &a2->determinise( false );
+    delete a2;
 
     Transducer *result = &Minimiser( *a1 ).result();
     delete a1;

@@ -364,7 +364,7 @@ namespace SFST {
       throw message;
     }
     free( filename );
-    Transducer *t = new Transducer(is, &TheAlphabet, Verbose);
+    Transducer *t = new Transducer(is, &TheAlphabet, Verbose, LexiconComments);
     is.close();
     TheAlphabet.insert_symbols(t->alphabet);
     if (Verbose)
@@ -966,7 +966,15 @@ namespace SFST {
   Transducer *Interface::cp( Range *lower_range, Range *upper_range )
 
   {
-    return make_transducer(lower_range, upper_range);
+    Transducer *t = make_transducer(lower_range, upper_range);
+    for( ArcsIter p(t->root_node()->arcs()); p; p++ ) {
+      Arc *arc=p;
+      if (TheAlphabet.find(arc->label()) == TheAlphabet.end())
+	fprintf(stderr,"Warning: 2-level rule mapping \"%s\" not defined in alphabet!\n",
+		TheAlphabet.write_label(arc->label()));
+    }
+    
+    return t;
   }
 
 
@@ -1463,17 +1471,6 @@ namespace SFST {
     mt->alphabet.copy(TheAlphabet);
     Transducer *no_mt = &!*mt;
 
-    {
-      static int print=1;
-      if (print) {
-	print = 0;
-	Transducer *temp = &(ct->copy());
-	temp = &(no_ct->copy());
-	temp = &(mt->copy());
-	temp = &(no_mt->copy());
-      }
-    }
-      
     Transducer *t1 = &(*no_ct + *mt);
     delete no_ct;
     delete mt;
@@ -1629,7 +1626,7 @@ namespace SFST {
       error("The replace operators require the definition of an alphabet");
 
     if (!c->left->is_automaton() || !c->right->is_automaton())
-      error("The replace operators require automata as context expressions!");
+      error("The replace operators require automata as context expressions! (Do not include any character mappings x:y between the two parentheses of the operator.)");
 
     // create the marker symbols
     Character leftm = TheAlphabet.new_marker();

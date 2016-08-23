@@ -29,6 +29,8 @@ using std::ostream;
 
 #include "sgi.h"
 
+#define SFSTVersion "1.4.6f"
+
 namespace SFST {
 
 #ifndef CODE_DATA_TYPE

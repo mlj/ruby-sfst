@@ -186,9 +186,7 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  void Transducer::index_nodes( Node *node, size_t &node_count,
-				size_t &transition_count,
-				vector<Node*> *nodearray )
+  void Transducer::index_nodes( Node *node, vector<Node*> *nodearray )
 
   {
     if (!node->was_visited( vmark )) {
@@ -199,8 +197,7 @@ namespace SFST {
       for( ArcsIter p(node->arcs()); p; p++ ) {
 	Arc *arc=p;
 	transition_count++;
-	index_nodes( arc->target_node(), node_count, 
-		     transition_count, nodearray );
+	index_nodes( arc->target_node(), nodearray );
       }
     }
   }
@@ -215,10 +212,11 @@ namespace SFST {
   std::pair<size_t,size_t> Transducer::nodeindexing( vector<Node*> *nodearray )
 
   {
-    size_t node_count = 0;
-    size_t transition_count = 0;
-    incr_vmark();
-    index_nodes( root_node(), node_count, transition_count, nodearray );
+    if (!indexed) {
+      incr_vmark();
+      index_nodes( root_node(), nodearray );
+      indexed = true;
+    }
 
     return std::pair<size_t,size_t>(node_count, transition_count);
   }
@@ -263,6 +261,8 @@ namespace SFST {
     Node *node=root_node();
 
     vmark = 0;
+    indexed = false;
+    node_count = transition_count = 0;
     deterministic = minimised = true;
     for( size_t i=0; i<path.size(); i++ ) {
       Arcs *arcs=node->arcs();
@@ -279,7 +279,8 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer::Transducer( istream &is, const Alphabet *a, bool verbose  )
+  Transducer::Transducer( istream &is, const Alphabet *a, bool verbose, 
+			  bool lexcomments  )
     : root(), mem()
   {
     bool extended=false;
@@ -287,6 +288,8 @@ namespace SFST {
     char buffer[10000];
 
     vmark = 0;
+    indexed = false;
+    node_count = transition_count = 0;
     deterministic = true;
     minimised = false;
     if (a) {
@@ -299,6 +302,22 @@ namespace SFST {
 	  cerr << "\n";
 	cerr << "\r" << n << " words";
       }
+
+      // delete comments
+      if (lexcomments) {
+	size_t l = strlen(buffer);
+	for( size_t i=0; i<l; i++ )
+	  if (buffer[i] == '\\' && buffer[i+1])
+	    ; // quoted character
+	  else if (buffer[i] == '%') {
+	    // comment starts here
+	    buffer[i] = 0;
+	    break;
+	  }
+	if (buffer[0] == 0)
+	  continue;
+      }
+
       // delete final whitespace characters
       int l;
       for( l=(int)strlen(buffer)-1; l>=0; l-- )
@@ -324,6 +343,8 @@ namespace SFST {
     : root(), mem()
   {
     vmark = 0;
+    indexed = false;
+    node_count = transition_count = 0;
     deterministic = minimised = true;
     if (a)
       alphabet.copy(*a);
@@ -490,11 +511,11 @@ namespace SFST {
     for( ArcsIter it(node->arcs()); it; it++ ) {
       Arc *arc=it;
 
-      NodeHashSet::iterator it_node=previous.insert(node).first;
+      NodeHashSet::iterator hsit=previous.insert(node).first;
       path.push_back(arc->label());
       enumerate_paths_node( arc->target_node(), path, previous, result );
       path.pop_back();
-      previous.erase(it_node);
+      previous.erase(hsit);
     }
   }
 
@@ -1040,6 +1061,8 @@ namespace SFST {
   Transducer::Transducer( FILE *file, bool binary )
 
   {
+    indexed = false;
+    node_count = transition_count = 0;
     if (binary)
       read_transducer_binary( file );
     else
