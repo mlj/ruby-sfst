@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description   = %q{A wrapper for the Stuttgart Finite State Transducer Tools (SFST).}
   spec.homepage      = "http://github.com/mlj/ruby-sfst"
 
-  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^spec/}) } - %w(.gitignore .rspec .travis.yml)
   spec.require_paths = ["lib"]
   spec.extensions    = ["ext/sfst/extconf.rb"]
 
