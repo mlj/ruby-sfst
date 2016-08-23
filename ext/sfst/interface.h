@@ -62,6 +62,7 @@ namespace SFST {
     Transducer *one_label_transducer( Label l );
     void add_pi_transitions( Transducer *t, Node *node, Alphabet &alph );
     Transducer *pi_machine( Alphabet &alph );
+    Transducer *empty_string_transducer( void );
     Transducer *cp( Range *lower_range, Range *upper_range );
     Transducer *anti_cp( Range *lower_range, Range *upper_range );
     Transducer *twol_right_rule( Transducer *lc, Range *lower_range, 

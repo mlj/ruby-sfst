@@ -192,7 +192,7 @@ namespace SFST
 
     Transducer &build_transducer();
 
-#ifndef NDEBUG
+#if 0
     void print_groups() {
       fputs("--------------\n", stderr);
       for( size_t g=first_group(); g<group.size(); g++ ) {
