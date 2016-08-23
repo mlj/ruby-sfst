@@ -14,6 +14,40 @@
 namespace SFST
 {
 
+
+  /*******************************************************************/
+  /*                                                                 */
+  /*  Transducer::rev_det_minimise                                   */
+  /*                                                                 */
+  /*******************************************************************/
+
+#if 0
+  // alternative less efficient minimisation algorithm
+  Transducer &Transducer::rev_det_minimise( bool verbose )
+
+  {
+    if (minimised)
+      return copy();
+
+    Transducer *a1, *a2;
+
+    a1 = &reverse();
+    a2 = &a1->determinise();
+    delete a1;
+
+    a1 = &a2->reverse();
+    delete a2;
+
+    a2 = &a1->determinise();
+    delete a1;
+
+    a2->minimised = true;
+    a2->minimise_alphabet();
+
+    return *a2;
+  }
+#endif
+
   
   /*****************  class Minimiser  *****************************/
   
@@ -221,11 +255,11 @@ namespace SFST
 
   /*******************************************************************/
   /*                                                                 */
-  /*  Transducer::hopcroft_minimise                                  */
+  /*  Transducer::minimise                                           */
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer &Transducer::hopcroft_minimise( bool verbose )
+  Transducer &Transducer::minimise( bool verbose )
 
   {
     if (minimised)

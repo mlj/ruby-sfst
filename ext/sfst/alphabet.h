@@ -29,7 +29,7 @@ using std::ostream;
 
 #include "sgi.h"
 
-#define SFSTVersion "1.4.6f"
+#define SFSTVersion "1.4.7a"
 
 namespace SFST {
 
@@ -41,7 +41,7 @@ namespace SFST {
 
   // data type used to indicate whether some action is to be performed
   // on the analysis level (lower) or the surface level (upper)
-  typedef enum {upper, lower} Level;
+  typedef enum {upper, lower, both} Level;
 
 
   /*****************  class Label  ***********************************/
@@ -202,6 +202,7 @@ namespace SFST {
     CharMap get_char_map(void) { return cm; };
     void print(void);
 
+
     void clear();
     void clear_char_pairs() { ls.clear(); };
 
@@ -215,7 +216,7 @@ namespace SFST {
     void insert_symbols( const Alphabet& );
 
     // insert the labels and known symbols from another alphabet
-    void copy( const Alphabet& );
+    void copy( const Alphabet &a, Level level=both );
 
     // create the alphabet of a transducer obtained by a composition operation
     void compose( const Alphabet &la, const Alphabet &ua );

@@ -240,7 +240,6 @@ namespace SFST {
     if (sym.size() == 0)
       error("Empty character range!");
     
-
     Range *result=NULL;
     for( size_t i=0; i<sym.size(); i++ ) {
       Range *tmp = new Range;
@@ -290,22 +289,6 @@ namespace SFST {
 	  r2 = r2->next;
       }
     }
-
-    return t;
-  }
-
-
-  /*******************************************************************/
-  /*                                                                 */
-  /*  Interface::empty_transducer                                    */
-  /*                                                                 */
-  /*******************************************************************/
-
-  Transducer *Interface::empty_transducer()
-
-  {
-    Transducer *t=new Transducer();
-    t->root_node()->set_final(1);
 
     return t;
   }
@@ -399,6 +382,7 @@ namespace SFST {
       throw message;
     }
     free( filename );
+    // transfer the encoding og TheAlphabet to the transducer
     Transducer *nt = &t.copy(false, &TheAlphabet);
     TheAlphabet.insert_symbols(nt->alphabet);
     if (Verbose)
@@ -758,6 +742,8 @@ namespace SFST {
   Transducer *Interface::subtraction( Transducer *t1, Transducer *t2 )
 
   {
+    t1->alphabet.copy(TheAlphabet);
+
     if (RS.size() > 0 || RSS.size() > 0)
       cerr << "\nWarning: agreement operation inside of conjunction!\n";
     Transducer *t = &(*t1 / *t2);
@@ -936,8 +922,10 @@ namespace SFST {
   void Interface::add_pi_transitions( Transducer *t, Node *node, Alphabet &alph)
 
   {
-    for( Alphabet::const_iterator it=alph.begin(); it!=alph.end(); it++)
-      node->add_arc( *it, node, t );
+    for( Alphabet::const_iterator it=alph.begin(); it!=alph.end(); it++) {
+      Label l = *it;
+      node->add_arc( l, node, t );
+    }
   }
 
 
@@ -955,6 +943,21 @@ namespace SFST {
     add_pi_transitions( t, t->root_node(), alph );
     return t;
   }
+
+
+  /*******************************************************************/
+  /*                                                                 */
+  /*  Interface::empty_string_transducer                             */
+  /*                                                                 */
+  /*******************************************************************/
+
+ Transducer *Interface::empty_string_transducer( void )
+
+ {
+   Transducer *t=new Transducer();
+   t->root_node()->set_final(1);
+   return t;
+ }
 
 
   /*******************************************************************/
@@ -1164,9 +1167,9 @@ namespace SFST {
 
   {
     if (l == NULL)
-      l = empty_transducer();
+      l = empty_string_transducer();
     if (r == NULL)
-      r = empty_transducer();
+      r = empty_string_transducer();
 
     Contexts *c=new Contexts();
     c->left = l;
@@ -1376,16 +1379,57 @@ namespace SFST {
 
   /*******************************************************************/
   /*                                                                 */
+  /*  Interface::insert_boundary_transducer                          */
+  /*                                                                 */
+  /*******************************************************************/
+
+  Transducer *Interface::insert_boundary_transducer( Character leftm, Character rightm,
+						     Alphabet &alph )
+  {
+    // Create the insert boundaries transducer (.|<>:<L>|<>:<R>)*
+  
+    Transducer *result=pi_machine( alph );
+    Node *root=result->root_node();
+    root->add_arc( Label(Label::epsilon, leftm), root, result);
+    root->add_arc( Label(Label::epsilon, rightm),root, result);
+
+    return result;
+  }
+
+
+  /*******************************************************************/
+  /*                                                                 */
+  /*  Interface::remove_boundary_transducer                          */
+  /*                                                                 */
+  /*******************************************************************/
+
+  Transducer *Interface::remove_boundary_transducer( Character leftm, Character rightm,
+						     Alphabet &alph )
+  {
+    // Create the remove boundaries transducer (.|<L>:<>|<R>:<>)*
+
+    Transducer *result=pi_machine( alph );
+    Node *root = result->root_node();
+    root->add_arc( Label(leftm, Label::epsilon), root, result);
+    root->add_arc( Label(rightm,Label::epsilon), root, result);
+
+    return result;
+  }
+
+
+  /*******************************************************************/
+  /*                                                                 */
   /*  Interface::constrain_boundary_transducer                       */
   /*                                                                 */
   /*******************************************************************/
 
   Transducer *Interface::constrain_boundary_transducer( Character leftm, 
-							Character rightm )
+							Character rightm,
+							Alphabet &alph)
   {
     // create the transducer  (.|<L>|<R>)*
 
-    Transducer *tmp=pi_machine(TheAlphabet);
+    Transducer *tmp=pi_machine( alph );
 
     // create the transducer  (.|<L>|<R>)* <L><R> (.|<L>|<R>)*
     Node *root = tmp->root_node();
@@ -1398,10 +1442,10 @@ namespace SFST {
     root->add_arc( Label(leftm), node, tmp);
     node->add_arc( Label(rightm), last, tmp);
 
-    add_pi_transitions( tmp, last, TheAlphabet );
+    add_pi_transitions( tmp, last, alph );
 
     // create the transducer  !((.|<L>|<R>)* <L><R> (.|<L>|<R>)*)
-    tmp->alphabet.copy(TheAlphabet);
+    tmp->alphabet.copy(alph);
     Transducer *result = &(!*tmp);
     delete tmp;
 
@@ -1415,11 +1459,11 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer *Interface::extended_left_transducer( Transducer *t, 
-						   Character m1, Character m2 )
+  Transducer *Interface::extended_left_transducer( Transducer *t, Character m1, 
+						   Character m2, Alphabet &alpha )
   {
     if (t == NULL) // empty context
-      return pi_machine(TheAlphabet);
+      return pi_machine(alpha);
 
     // Extended left context transducer
 
@@ -1430,12 +1474,12 @@ namespace SFST {
     delete tmp;
 
     // .* (<R> >> (<L> >> $T$))
-    add_pi_transitions( t, t->root_node(), TheAlphabet );
+    add_pi_transitions( t, t->root_node(), alpha );
 
     // !(.*<L>)
     tmp = one_label_transducer(Label(m1));
-    add_pi_transitions( tmp, tmp->root_node(), TheAlphabet );
-    tmp->alphabet.copy(TheAlphabet);
+    add_pi_transitions( tmp, tmp->root_node(), alpha );
+    tmp->alphabet.copy(alpha);
     Transducer *t2 = &(!*tmp);
     delete tmp;
     
@@ -1454,21 +1498,23 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  Transducer *Interface::left_context( Transducer *t, 
-				       Character m1, Character m2 )
+  Transducer *Interface::left_context( Transducer *t, Character leftm, 
+				       Character rightm, Alphabet &alph )
   {
     // .* (<R> >> (<L> >> $T$)) || !(.*<L>)
-    Transducer *ct = extended_left_transducer(t, m1, m2);
+    Transducer *ct = extended_left_transducer(t, leftm, rightm, alph);
 
+    // <L>
+    Transducer *mt = one_label_transducer(Label(leftm));
+    // <R>* <L>
+    mt->root_node()->add_arc(Label(rightm), mt->root_node(), mt );
     // <R>* <L> .*
-    Transducer *mt = one_label_transducer(Label(m1));
-    mt->root_node()->add_arc(Label(m2), mt->root_node(), mt );
-    add_pi_transitions(mt, mt->root_node()->target_node(Label(m1)),TheAlphabet);
+    add_pi_transitions(mt, mt->root_node()->target_node(Label(leftm)), alph);
 
-    ct->alphabet.copy(TheAlphabet);
+    ct->alphabet.copy( alph );
     Transducer *no_ct = &!*ct;
 
-    mt->alphabet.copy(TheAlphabet);
+    mt->alphabet.copy(alph);
     Transducer *no_mt = &!*mt;
 
     Transducer *t1 = &(*no_ct + *mt);
@@ -1483,11 +1529,30 @@ namespace SFST {
     delete t1;
     delete t2;
 
-    tmp->alphabet.copy(TheAlphabet);
+    tmp->alphabet.copy( alph );
     t1 = &!*tmp;
     delete tmp;
 
     return t1;
+  }
+
+
+  /*******************************************************************/
+  /*                                                                 */
+  /*  Interface::right_context                                       */
+  /*                                                                 */
+  /*******************************************************************/
+
+  Transducer *Interface::right_context( Transducer *t, Character leftm, 
+					Character rightm, Alphabet &alph )
+  {
+    // right context transducer:  (<R> >> (<L> >> $T$)) .* || !(<R>.*)
+    Transducer *tmp = &t->reverse();
+    delete t;
+    Transducer *t2 = left_context(tmp, rightm, leftm, alph);
+    Transducer *result = &t2->reverse();
+    delete t2;
+    return result;
   }
 
 
@@ -1528,47 +1593,63 @@ namespace SFST {
       ct = make_optional(ct, type);
 
     // compute the no-center transducer
-    Transducer *tmp=NULL;
+    Transducer *t1=NULL;
 
-    if (type == repl_up)
-      // _ct
-      tmp = &ct->lower_level();
-    else if (type == my_repl_down)
-      // ^ct
-      tmp = &ct->upper_level();
+    Transducer *pi = pi_machine(TheAlphabet);
+    if (type == repl_up) {
+      // _ct || .*
+      Transducer *t2 = &ct->lower_level();
+      t1 = &(*t2 || *pi);
+      delete t2;
+    }
+    else if (type == my_repl_down) {
+      // .* || ^ct
+      Transducer *t2 = &ct->upper_level();
+      t1 = &(*pi || *t2);
+      delete t2;
+    }
     else
       error("Invalid type of replace operator");
 
+    {
+      // _ct without empty string
+      Transducer *t2 = empty_string_transducer();
+      Transducer *t3 = &(*t1 / *t2);
+      delete t1;
+      delete t2;
+      t1 = t3;
+    }
+
     // .* _ct
-    add_pi_transitions( tmp, tmp->root_node(), TheAlphabet );
+    Transducer *t2 = &(*pi + *t1);
+    delete t1;
 
     // .*  _ct .*
-    Transducer *t2 = pi_machine(TheAlphabet);
-    Transducer *t3 = &(*tmp + *t2);
-    delete tmp;
+    t1 = &(*t2 + *pi);
+    delete pi;
     delete t2;
 
     // no_ct = !(.*  _ct .*)
-    t3->alphabet.copy(TheAlphabet);
-    Transducer *no_ct = &(!*t3);
-    delete t3;
+    t1->alphabet.copy(TheAlphabet);
+    Transducer *no_ct = &(!*t1);
+    delete t1;
 
     // compute the unconditional replacement transducer
 
     // no-ct ct
-    tmp = &(*no_ct + *ct);
+    t1 = &(*no_ct + *ct);
     delete ct;
 
     // (no-ct ct)*
-    t2 = &(tmp->kleene_star());
-    delete tmp;
+    t2 = &(t1->kleene_star());
+    delete t1;
 
     // (no-ct ct)* no-ct
-    tmp = &(*t2 + *no_ct);
+    t1 = &(*t2 + *no_ct);
     delete t2;
     delete no_ct;
 
-    return tmp;
+    return t1;
   }
 
 
@@ -1628,111 +1709,135 @@ namespace SFST {
     if (!c->left->is_automaton() || !c->right->is_automaton())
       error("The replace operators require automata as context expressions! (Do not include any character mappings x:y between the two parentheses of the operator.)");
 
+    if (type == my_repl_down) {
+      Transducer *t2 = empty_string_transducer();
+      Transducer *t3 = &(*t || *t2);
+      if (!t3->is_empty())
+	cerr << "\nWarning: The source of the replace operation contains the empty string! (Such insertion operations do not work.)\n";
+      delete t2;
+      delete t3;
+    }
+    else {
+      Transducer *t2 = empty_string_transducer();
+      Transducer *t3 = &(*t2 || *t);
+      if (!t3->is_empty())
+	cerr << "\nWarning: The source of the replace operation contains the empty string! (Such insertion operations do not work.)\n";
+      delete t2;
+      delete t3;
+    }
+
     // create the marker symbols
     Character leftm = TheAlphabet.new_marker();
     Character rightm = TheAlphabet.new_marker();
+
+    // create the upper and lower alphabets
+    Alphabet lower_alph;
+    lower_alph.copy( TheAlphabet, lower );
+    Alphabet upper_alph;
+    upper_alph.copy( TheAlphabet, upper );
 
     /////////////////////////////////////////////////////////////
     // Create the insert boundaries transducer (.|<>:<L>|<>:<R>)*
     /////////////////////////////////////////////////////////////
   
-    Transducer *ibt=pi_machine(TheAlphabet);
-    Node *root=ibt->root_node();
-    root->add_arc( Label(Label::epsilon, leftm), root, ibt);
-    root->add_arc( Label(Label::epsilon, rightm),root, ibt);
+    Transducer *tmp=insert_boundary_transducer( leftm, rightm, lower_alph );
 
     /////////////////////////////////////////////////////////////
     // Create the remove boundaries transducer (.|<L>:<>|<R>:<>)*
     /////////////////////////////////////////////////////////////
 
-    Transducer *rbt=pi_machine(TheAlphabet);
-    root = rbt->root_node();
-    root->add_arc( Label(leftm, Label::epsilon), root, rbt);
-    root->add_arc( Label(rightm,Label::epsilon), root, rbt);
+    Transducer *rbt=remove_boundary_transducer( leftm, rightm, upper_alph );
 
     // Add the markers to the alphabet
     TheAlphabet.insert(Label(leftm));
     TheAlphabet.insert(Label(rightm));
-
-    /////////////////////////////////////////////////////////////
-    // Create the constrain boundaries transducer !(.*<L><R>.*)
-    /////////////////////////////////////////////////////////////
-
-    Transducer *cbt=constrain_boundary_transducer(leftm, rightm);
-
-    /////////////////////////////////////////////////////////////
-    // Create the extended context transducers
-    /////////////////////////////////////////////////////////////
-
-    // left context transducer:  .* (<R> >> (<L> >> $T$)) || !(.*<L>)
-    Transducer *lct = left_context(c->left, leftm, rightm);
-
-    // right context transducer:  (<R> >> (<L> >> $T$)) .* || !(<R>.*)
-    Transducer *tmp = &c->right->reverse();
-    delete c->right;
-    Transducer *t2 = left_context(tmp, rightm, leftm);
-    Transducer *rct = &t2->reverse();
-    delete t2;
+    lower_alph.insert(Label(leftm));
+    lower_alph.insert(Label(rightm));
+    upper_alph.insert(Label(leftm));
+    upper_alph.insert(Label(rightm));
 
     /////////////////////////////////////////////////////////////
     // unconditional replace transducer
     /////////////////////////////////////////////////////////////
 
     Transducer *rt;
-    if (type == repl_up || type == repl_right || 
-	type == repl_left || type == repl_down)
-      rt = replace_transducer( t, leftm, rightm, repl_up );
-    else
+    if (type == my_repl_down)
       rt = replace_transducer( t, leftm, rightm, my_repl_down );
+    else
+      rt = replace_transducer( t, leftm, rightm, repl_up );
 
     /////////////////////////////////////////////////////////////
     // build the conditional replacement transducer
     /////////////////////////////////////////////////////////////
 
-    tmp = &(ibt->copy());
-    tmp = &(cbt->copy());
-    tmp = &(lct->copy());
-    tmp = &(rct->copy());
-    tmp = &(rt->copy());
-    tmp = &(rbt->copy());
+    if (type != my_repl_down) {
+      // Create the constrain boundaries transducer !(.*<L><R>.*)
+      Transducer *cbt=constrain_boundary_transducer(leftm, rightm, lower_alph);
 
-    tmp = ibt;
-    tmp = &(*ibt || *cbt);
-    delete(ibt);
-    delete(cbt);
+      Transducer *t2 = &(*tmp || *cbt);
+      delete tmp;
+      delete cbt;
+      tmp = t2;
+    }
 
     if (type == repl_up || type == repl_left) {
-      t2 = &(*tmp || *lct);
+      // left context transducer:  .* (<R> >> (<L> >> $T$)) || !(.*<L>)
+      Transducer *lct = left_context(c->left, leftm, rightm, lower_alph);
+
+      Transducer *t2 = &(*tmp || *lct);
       delete tmp;
       delete lct;
       tmp = t2;
     }
+
     if (type == repl_up || type == repl_right) {
-      t2 = &(*tmp || *rct);
+      // right context transducer:  (<R> >> (<L> >> $T$)) .* || !(<R>.*)
+      Transducer *rct = right_context(c->right, leftm, rightm, lower_alph);
+
+      Transducer *t2 = &(*tmp || *rct);
       delete tmp;
       delete rct;
       tmp = t2;
     }
 
-    t2 = &(*tmp || *rt);
-    delete tmp;
-    delete rt;
-    tmp = t2;
-    
-    if (type == my_repl_down || type == repl_right || type == repl_down) {
-      t2 = &(*tmp || *lct);
+    {
+      // Apply the replacement transducer
+      Transducer *t2 = &(*tmp || *rt);
+      delete tmp;
+      delete rt;
+      tmp = t2;
+    }
+
+    if (type == my_repl_down || type == repl_down || type == repl_right) {
+      // left context transducer:  .* (<R> >> (<L> >> $T$)) || !(.*<L>)
+      Transducer *lct = left_context(c->left, leftm, rightm, upper_alph);
+
+      Transducer *t2 = &(*tmp || *lct);
       delete tmp;
       delete lct;
       tmp = t2;
     }
-    if (type == my_repl_down || type == repl_left || type == repl_down) {
-      t2 = &(*tmp || *rct);
+    if (type == my_repl_down || type == repl_down || type == repl_left) {
+      // right context transducer:  (<R> >> (<L> >> $T$)) .* || !(<R>.*)
+      Transducer *rct = right_context(c->right, leftm, rightm, upper_alph);
+
+      Transducer *t2 = &(*tmp || *rct);
       delete tmp;
       delete rct;
       tmp = t2;
     }
 
-    t2 = &(*tmp || *rbt);
+    if (type == my_repl_down) {
+      // Create the constrain boundaries transducer !(.*<L><R>.*)
+      Transducer *cbt=constrain_boundary_transducer(leftm, rightm, upper_alph);
+
+      Transducer *t2 = &(*tmp || *cbt);
+      delete(tmp);
+      delete(cbt);
+      tmp = t2;
+    }
+
+    Transducer *result = &(*tmp || *rbt);
     delete tmp;
     delete rbt;
 
@@ -1741,7 +1846,7 @@ namespace SFST {
 
     free_contexts( c );
 
-    return t2;
+    return result;
   }
 
 

@@ -21,9 +21,9 @@ namespace SFST {
   void error( const char *message );
   void error2( const char *message, char *input );
 
-  typedef enum {twol_left,twol_right,twol_both} Twol_Type;
+  typedef enum {twol_left, twol_right, twol_both} Twol_Type;
   
-  typedef enum {repl_left,repl_right,repl_up,my_repl_down,repl_down} Repl_Type;
+  typedef enum {repl_left, repl_right, repl_up, my_repl_down, repl_down} Repl_Type;
   
   typedef struct range_t {
     Character character;
@@ -58,7 +58,6 @@ namespace SFST {
     typedef map<char*, Range*, ltstr> SVarMap;
 
     Range *copy_values( const Range *r );
-    Transducer *empty_transducer();
     Transducer *one_label_transducer( Label l );
     void add_pi_transitions( Transducer *t, Node *node, Alphabet &alph );
     Transducer *pi_machine( Alphabet &alph );
@@ -77,10 +76,16 @@ namespace SFST {
 				   Transducer *mt );
     Transducer *context_transducer( Transducer *t, Transducer *pi,
 				    Transducer *mt, Contexts *c );
-    Transducer *constrain_boundary_transducer( Character leftm, Character rm );
-    Transducer *extended_left_transducer( Transducer *t, 
-					  Character m1, Character m2 );
-    Transducer *left_context( Transducer *t, Character m1, Character m2 );
+    Transducer *insert_boundary_transducer( Character leftm, Character rightm,
+					    Alphabet &alph );
+    Transducer *remove_boundary_transducer( Character leftm, Character rightm,
+					    Alphabet &alph );
+    Transducer *constrain_boundary_transducer( Character leftm, Character rm,
+					       Alphabet &alph );
+    Transducer *extended_left_transducer( Transducer *t, Character m1, 
+					  Character m2, Alphabet& );
+    Transducer *left_context( Transducer *t, Character m1, Character m2, Alphabet& );
+    Transducer *right_context( Transducer *t, Character m1, Character m2, Alphabet& );
     Transducer *make_optional( Transducer *t, Repl_Type type );
     Transducer *replace_transducer( Transducer *ct, Character lm, 
 				    Character rm, Repl_Type type );

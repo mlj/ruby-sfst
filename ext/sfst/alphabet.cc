@@ -92,9 +92,10 @@ namespace SFST {
   void Alphabet::print(void)
 
   {
-    for( CharMap::iterator it=cm.begin(); it!=cm.end(); it++ )
-      fprintf(stderr, "%i\t%s\n", it->first, it->second);
-    return;
+    for( LabelSet::const_iterator it=begin(); it!=end(); it++ ) {
+      Label l = *it;
+      fprintf(stderr, "%s\n", write_label(l));
+    }
   }
 
 
@@ -256,7 +257,7 @@ namespace SFST {
     const char *s = code2symbol(c);
 
     // quote colons
-    if (strcmp(s,":") == 0) {
+    if (strcmp(s,":") == 0 || strcmp(s,"\\") == 0) {
       buffer[(*pos)++] = '\\';
       buffer[(*pos)++] = s[0];
     }
@@ -377,15 +378,22 @@ namespace SFST {
   /*                                                                 */
   /*******************************************************************/
 
-  void Alphabet::copy( const Alphabet &a )
+  void Alphabet::copy( const Alphabet &a, Level level )
 
   {
     utf8 = a.utf8;
     sm.resize(a.sm.size());
     cm.resize(a.sm.size());
     insert_symbols( a );
-    for( LabelSet::const_iterator it=a.begin(); it!=a.end(); it++ )
-      ls.insert( *it );
+    for( LabelSet::const_iterator it=a.begin(); it!=a.end(); it++ ) {
+      Label l = *it;
+      if (level == lower)
+	ls.insert( Label(l.lower_char()) );
+      else if (level == upper)
+	ls.insert( Label(l.upper_char()) );
+      else
+	ls.insert( l );
+    }
   }
 
 

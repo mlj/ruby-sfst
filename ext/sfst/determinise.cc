@@ -17,6 +17,7 @@ using std::set;
 
 namespace SFST {
 
+
   /*****************  class NodeSet  *********************************/
 
   class NodeSet {
@@ -40,6 +41,8 @@ namespace SFST {
     size_t size() const { return ht.size(); }
     void clear() { ht.clear(); }
   };
+
+  typedef map<const Label, NodeSet> Label2NodeSet;
 
 
   /*****************  class NodeArray  *******************************/
@@ -109,28 +112,7 @@ namespace SFST {
   };
 
 
-  /*****************  class Label2NodeSet  ****************************/
-
-  class Label2NodeSet {
-    // This class is used to map a label to a node set
-
-  private:
-    typedef map<const Label, NodeSet> LabelMap;
-    LabelMap lm;
-  
-  public:
-    Label2NodeSet(): lm() {};
-    typedef LabelMap::iterator iterator;
-    iterator begin() { return lm.begin(); };
-    iterator end() { return lm.end(); };
-    size_t   size() { return lm.size(); };
-    iterator find( Label l) { return lm.find( l ); };
-    NodeSet &operator[]( const Label l ) { return lm.operator[]( l ); };
-  
-  };
-
   static void determinise_node( NodeArray&, Node*, Transducer*, NodeMapping& );
-
 
 
   /*******************************************************************/
@@ -216,15 +198,16 @@ namespace SFST {
     
       // For each non-epsilon transition, add the target node
       // to the respective node set.
-      for( ArcsIter p(n->arcs(),ArcsIter::non_eps); p; p++ ) {
+      for( ArcsIter p(n->arcs(), ArcsIter::non_eps); p; p++ ) {
 	Arc *arc=p;
 	lmap[arc->label()].add(arc->target_node());
       }
     }
   
     t.reserve(lmap.size());
-    for( Label2NodeSet::iterator it=lmap.begin(); it!=lmap.end(); it++ )
+    for( Label2NodeSet::iterator it=lmap.begin(); it!=lmap.end(); it++ ) {
       t.push_back(DTransition(it->first, new NodeArray( it->second )));
+    }
   }
 
 

@@ -272,8 +272,6 @@ namespace SFST {
 
   public:
     VType vmark;
-    static bool hopcroft_minimisation;
-
     bool deterministic;
     bool minimised;
     bool indexed;
@@ -324,10 +322,12 @@ namespace SFST {
     bool generate_string( char *s, FILE *file, bool with_brackets=true );
     void generate( FILE *file, int max=-1, OutputType ot=Joint );
 
-    void clear( void );      // clears the transducer. The resulting transducer
-    // is like one created with Transducer()
-    // copy duplicates an transducer
-    // if called with a non-zero argument, upper and lower level are switched
+    void clear( void );  // clears the transducer. The resulting transducer
+                         // is like one created with Transducer()
+    // copy duplicates a transducer
+    // if called with a non-zero first argument, upper and lower level are switched
+    // if called with an alphabet as second argument, the label encoding
+    // of the second argument is transferred to the transducer copy
     Transducer &copy( bool lswitch=false, const Alphabet *al=NULL );
     Transducer &switch_levels( void ) { return copy( true ); };
     Transducer &splice( Label l, Transducer *a);
@@ -339,13 +339,7 @@ namespace SFST {
     Transducer &upper_level( void )   // creates an transducer for the "upper" language
       { return level(upper); };
     Transducer &determinise( bool copy_alphabet=true ); // creates a deterministic transducer
-    Transducer &rev_det_minimise( bool verbose ); 
-    Transducer &hopcroft_minimise( bool verbose );
-    Transducer &minimise( bool verbose=true ) {
-      if (hopcroft_minimisation)
-	return hopcroft_minimise( verbose );
-      return rev_det_minimise( verbose );
-    }
+    Transducer &minimise( bool verbose=true );
     void store( FILE* );       // stores the transducer in binary format
     void store_lowmem( FILE* );
     void read( FILE* );        // reads an transducer in binary format

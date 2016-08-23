@@ -21,8 +21,6 @@ namespace SFST {
 
   const int BUFFER_SIZE=100000;
 
-  bool Transducer::hopcroft_minimisation=true;
-
 
   /*******************************************************************/
   /*                                                                 */
@@ -426,37 +424,6 @@ namespace SFST {
     }
     for( LabelSet::iterator it=labels.begin(); it!=labels.end(); it++ )
       alphabet.insert(*it);
-  }
-
-
-  /*******************************************************************/
-  /*                                                                 */
-  /*  Transducer::rev_det_minimise                                   */
-  /*                                                                 */
-  /*******************************************************************/
-
-  Transducer &Transducer::rev_det_minimise( bool verbose )
-
-  {
-    if (minimised)
-      return copy();
-
-    Transducer *a1, *a2;
-
-    a1 = &reverse();
-    a2 = &a1->determinise();
-    delete a1;
-
-    a1 = &a2->reverse();
-    delete a2;
-
-    a2 = &a1->determinise();
-    delete a1;
-
-    a2->minimised = true;
-    a2->minimise_alphabet();
-
-    return *a2;
   }
 
 

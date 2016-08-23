@@ -637,8 +637,12 @@ namespace SFST {
   {
     Transducer *na;
 
-    if (alphabet.size() == 0)
-      throw "Negation of Transducer with undefined alphabet attempted!";
+    if (alphabet.size() == 0) {
+      // throw "Negation of Transducer with undefined alphabet attempted!";
+      fprintf(stderr, "Warning: undefined alphabet\n");
+      na = new Transducer();
+      return *na;
+    }
 
     if (minimised)
       na = &copy();
@@ -937,10 +941,13 @@ namespace SFST {
   {
     complete_alphabet();
     a.alphabet.copy(alphabet);
-    Transducer *a1 = &(!a);
-    Transducer *a2 = &(*this & *a1);
+    // a-b = a & !b = a & !(a & b)
+    Transducer *a1 = &(*this & a);
+    Transducer *a2 = &(!*a1);
     delete a1;
-    return *a2;
+    a1 = &(*this & *a2);
+    delete a2;
+    return *a1;
   }
 
 
