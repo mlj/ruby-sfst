@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby-sfst (0.4.3)
+    ruby-sfst (0.4.4)
 
 GEM
   remote: https://rubygems.org/
