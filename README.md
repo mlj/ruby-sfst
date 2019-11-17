@@ -3,7 +3,7 @@
 `ruby-sfst` is a wrapper for the Stuttgart Finite State Transducer Tools
 (SFST).
 
-The wrapper is based on SFST 1.4.7c. See
+The wrapper is based on SFST 1.4.7e. See
 http://www.cis.uni-muenchen.de/~schmid/tools/SFST/ for details on how to obtain
 SFST and how to write SFST transducers.
 

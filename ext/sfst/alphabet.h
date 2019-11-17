@@ -29,7 +29,7 @@ using std::ostream;
 
 #include "sgi.h"
 
-#define SFSTVersion "1.4.7a"
+#define SFSTVersion "1.4.7d"
 
 namespace SFST {
 

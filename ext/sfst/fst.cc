@@ -278,7 +278,7 @@ namespace SFST {
   /*******************************************************************/
 
   Transducer::Transducer( istream &is, const Alphabet *a, bool verbose, 
-			  bool lexcomments  )
+			  bool lexcomments )
     : root(), mem()
   {
     bool extended=false;
@@ -312,8 +312,6 @@ namespace SFST {
 	    buffer[i] = 0;
 	    break;
 	  }
-	if (buffer[0] == 0)
-	  continue;
       }
 
       // delete final whitespace characters
@@ -324,7 +322,8 @@ namespace SFST {
 	  break;
       buffer[l+1] = 0;
 
-      add_string(buffer, extended);
+      if (buffer[0] != 0) // ignore empty lines
+	add_string(buffer, extended);
     }
     if (verbose && n >= 10000)
       cerr << "\n";
