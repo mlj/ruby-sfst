@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0
+
+* Update to SFST 1.4.7e
+* Drop support for Ruby < 2.4
+
+## 0.4.4
+
 * Update to SFST 1.4.7c
 * Dropped support for compiling FSTs from Ruby; use fst-compiler-utf8 instead
 

@@ -1,3 +1,3 @@
 module SFST
-  VERSION = '0.4.4'.freeze unless defined?(SFST::VERSION)
+  VERSION = '1.0.0'.freeze unless defined?(SFST::VERSION)
 end
