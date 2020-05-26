@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 #
 # sfst.rb - SFST interface
 #
@@ -13,10 +12,10 @@ module SFST
   # ==== Options
   # compact:: Compile a compact transducer.
   def self.compile(source, machine, options = {})
-    unless options[:compact]
-      _compile_regular(source, machine)
-    else
+    if options[:compact]
       _compile_compact(source, machine)
+    else
+      _compile_regular(source, machine)
     end
   end
 
@@ -34,12 +33,12 @@ module SFST
     #   Multicharacter symbols will be strings on the form +<symbol>+.
     def analyze(string, options = {})
       x = []
-      @fst._analyze(string) do |a| 
-        if options[:symbol_sequence]
-          x << a.map { |s| s.match(/^<(.*)>$/) ? $1.to_sym : s }
-        else
-          x << a.join
-        end
+      @fst._analyze(string) do |a|
+        x << if options[:symbol_sequence]
+               a.map { |s| s.match(/^<(.*)>$/) ? Regexp.last_match(1).to_sym : s }
+             else
+               a.join
+             end
       end
       x
     end
@@ -66,14 +65,14 @@ module SFST
     # non-compact transducers.
     #
     # ==== Options
-    # * +levels+ - if <tt>:upper</tt>, generates only upper level. If <tt>:lower</tt> generates 
+    # * +levels+ - if <tt>:upper</tt>, generates only upper level. If <tt>:lower</tt> generates
     #   only lower level. If <tt>:both</tt>, generates both. Default is <tt>:both</tt>.
     # * +epsilons+ - if +true+, produces epsilons. Default is +false+.
     def generate_language(options = {}, &block)
       @fst._generate_language(options[:levels] || :both, options[:epsilons] ? :all : :noepsilons, &block)
     end
 
-    alias :analyse :analyze
+    alias analyse analyze
   end
 
   # A compact transducer.
@@ -95,6 +94,6 @@ module SFST
       x
     end
 
-    alias :analyse :analyze
+    alias analyse analyze
   end
 end
