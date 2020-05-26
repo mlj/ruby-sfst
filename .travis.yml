@@ -1,9 +1,9 @@
-sudo: false
 language: ruby
-rvm:
-  - 2.3.8
+vm:
   - 2.4.10
   - 2.5.8
   - 2.6.6
   - 2.7.1
+dist: xenial
+os: linux
 before_install: gem install bundler

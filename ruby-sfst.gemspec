@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.extensions    = ["ext/sfst/extconf.rb"]
 
-  spec.required_ruby_version = '>= 1.9'
+  spec.required_ruby_version = '>= 2.4'
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake', '~> 12.3'

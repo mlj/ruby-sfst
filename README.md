@@ -7,6 +7,8 @@ The wrapper is based on SFST 1.4.7e. See
 http://www.cis.uni-muenchen.de/~schmid/tools/SFST/ for details on how to obtain
 SFST and how to write SFST transducers.
 
+Requires Ruby 2.4 or greater.
+
 ## Installation
 
 ```sh
