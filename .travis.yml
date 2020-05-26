@@ -7,3 +7,6 @@ vm:
 dist: xenial
 os: linux
 before_install: gem install bundler -v 2.1.4
+script:
+  - echo "Rubocop $(bundle exec rubocop --version)"
+  - bundle exec rubocop -S -E
