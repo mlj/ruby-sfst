@@ -6,4 +6,4 @@ vm:
   - 2.7.1
 dist: xenial
 os: linux
-before_install: gem install bundler
+before_install: gem install bundler -v 2.1.4
