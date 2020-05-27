@@ -9,17 +9,9 @@ rvm:
 dist: xenial
 osx_image: xcode11
 
-jobs:
-  include:
-    - name: macOS
-      os: osx
-      compiler: clang
-    - name: Xenial clang
-      os: linux
-      compiler: clang
-    - name: Xenial gcc
-      os: linux
-      compiler: gcc
+os:
+  - osx
+  - linux
 
 before_install: gem install bundler -v 2.1.4
 
